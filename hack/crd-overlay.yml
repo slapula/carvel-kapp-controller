@@ -1,4 +1,6 @@
 #@ load("@ytt:overlay", "overlay")
+#@ load("@ytt:data", "data")
+
 #@overlay/match by=overlay.subset({"kind": "CustomResourceDefinition"}), expects="0+"
 ---
 metadata:
@@ -26,3 +28,10 @@ metadata:
 spec:
   names:
     plural: internalpackagemetadatas
+
+#@overlay/match by=overlay.subset({"kind": "CustomResourceDefinition", "metadata": {"name": "packagerepositories.packaging.carvel.dev"}})
+---
+metadata:
+  #@overlay/match missing_ok=True
+  annotations:
+    packaging.carvel.dev/global-namespace: #@ data.values.global_packaging_namespace

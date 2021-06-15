@@ -1,7 +1,7 @@
 #@data/values
 ---
 namespace: kapp-controller
-packaging_global_namespace: kapp-controller-packaging-global
+global_packaging_namespace: kapp-controller-packaging-global
 create_namespace: true
 create_packaging_namespace: true
 

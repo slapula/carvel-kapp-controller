@@ -11,9 +11,9 @@ kind: Namespace
 metadata:
   name: #@ data.values.namespace
 
-#@ if/end data.values.packaging_global_namespace != "" and data.values.create_packaging_namespace:
+#@ if/end data.values.global_packaging_namespace != "" and data.values.create_packaging_namespace:
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: #@ data.values.packaging_global_namespace
+  name: #@ data.values.global_packaging_namespace
