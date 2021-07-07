@@ -7,6 +7,7 @@ import (
 	"github.com/go-logr/logr"
 	kcv1alpha1 "github.com/vmware-tanzu/carvel-kapp-controller/pkg/apis/kappctrl/v1alpha1"
 	ctlapp "github.com/vmware-tanzu/carvel-kapp-controller/pkg/app"
+	"github.com/vmware-tanzu/carvel-kapp-controller/pkg/appsecrets"
 	kcclient "github.com/vmware-tanzu/carvel-kapp-controller/pkg/client/clientset/versioned"
 	"github.com/vmware-tanzu/carvel-kapp-controller/pkg/config"
 	"github.com/vmware-tanzu/carvel-kapp-controller/pkg/deploy"
@@ -26,4 +27,8 @@ func (f *AppFactory) NewCRDApp(app *kcv1alpha1.App, log logr.Logger) *ctlapp.CRD
 	templateFactory := template.NewFactory(f.coreClient, fetchFactory)
 	deployFactory := deploy.NewFactory(f.coreClient)
 	return ctlapp.NewCRDApp(app, log, f.appClient, fetchFactory, templateFactory, deployFactory)
+}
+
+func (f *AppFactory) NewDefaultSecrets(log logr.Logger) *appsecrets.DefaultSecrets {
+	return appsecrets.NewDefaultSecrets(f.coreClient, log)
 }

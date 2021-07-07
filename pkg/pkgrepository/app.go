@@ -20,6 +20,11 @@ func NewApp(existingApp *kcv1alpha1.App, pkgRepository *instpkgv1alpha1.PackageR
 	desiredApp.Name = pkgRepository.Name
 	desiredApp.Namespace = appNs
 
+	if desiredApp.Annotations == nil {
+		desiredApp.Annotations = map[string]string{}
+	}
+	desiredApp.Annotations["kappctrl.k14s.io/default-secrets"] = ""
+
 	err := controllerutil.SetControllerReference(pkgRepository, desiredApp, scheme.Scheme)
 	if err != nil {
 		return &kcv1alpha1.App{}, err

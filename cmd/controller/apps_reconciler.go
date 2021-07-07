@@ -46,6 +46,13 @@ func (r *AppsReconciler) Reconcile(ctx context.Context, request reconcile.Reques
 		return reconcile.Result{}, err
 	}
 
+	// Have to attach secrets to the app before app references are tracked
+	// so that when secrets change app is immediately reconciled
+	err = r.appFactory.NewDefaultSecrets(log).AttachAndReconcile(existingApp)
+	if err != nil {
+		return reconcile.Result{Requeue: true}, err
+	}
+
 	crdApp := r.appFactory.NewCRDApp(existingApp, log)
 	r.UpdateAppRefs(crdApp.ResourceRefs(), existingApp)
 

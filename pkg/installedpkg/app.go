@@ -18,6 +18,12 @@ func NewApp(existingApp *v1alpha1.App, installedPkg *instpkgv1alpha1.InstalledPa
 
 	desiredApp.Name = installedPkg.Name
 	desiredApp.Namespace = installedPkg.Namespace
+
+	if desiredApp.Annotations == nil {
+		desiredApp.Annotations = map[string]string{}
+	}
+	desiredApp.Annotations["kappctrl.k14s.io/default-secrets"] = ""
+
 	desiredApp.Spec = *pkg.Spec.Template.Spec
 	desiredApp.Spec.ServiceAccountName = installedPkg.Spec.ServiceAccountName
 
