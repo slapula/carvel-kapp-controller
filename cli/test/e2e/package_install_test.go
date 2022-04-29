@@ -137,16 +137,23 @@ spec:
 		output := uitest.JSONUIFromBytes(t, []byte(out))
 
 		expectedOutputRows := []map[string]string{{
-			"conditions":           "- type: ReconcileSucceeded\n  status: \"True\"\n  reason: \"\"\n  message: \"\"",
-			"namespace":            env.Namespace,
-			"name":                 "testpkgi",
-			"package_name":         "test-pkg.carvel.dev",
-			"package_version":      "1.0.0",
-			"status":               "Reconcile succeeded",
-			"useful_error_message": "",
+			"conditions":      "- type: ReconcileSucceeded\n  status: \"True\"\n  reason: \"\"\n  message: \"\"",
+			"namespace":       env.Namespace,
+			"name":            "testpkgi",
+			"package_name":    "test-pkg.carvel.dev",
+			"package_version": "1.0.0",
+			"status":          "Reconcile succeeded",
 		}}
 
 		require.Exactly(t, expectedOutputRows, output.Tables[0].Rows)
+	})
+
+	logger.Section("package installed status", func() {
+		out := kappCtrl.Run([]string{"package", "installed", "status", "-i", pkgiName})
+
+		require.Contains(t, out, "Fetch succeeded")
+		require.Contains(t, out, "Template succeeded")
+		require.Contains(t, out, "App reconciled")
 	})
 
 	logger.Section("package installed update", func() {
@@ -165,16 +172,43 @@ spec:
 		output := uitest.JSONUIFromBytes(t, []byte(out))
 
 		expectedOutputRows := []map[string]string{{
-			"conditions":           "- type: ReconcileSucceeded\n  status: \"True\"\n  reason: \"\"\n  message: \"\"",
-			"namespace":            env.Namespace,
-			"name":                 "testpkgi",
-			"package_name":         "test-pkg.carvel.dev",
-			"package_version":      "2.0.0",
-			"status":               "Reconcile succeeded",
-			"useful_error_message": "",
+			"conditions":      "- type: ReconcileSucceeded\n  status: \"True\"\n  reason: \"\"\n  message: \"\"",
+			"namespace":       env.Namespace,
+			"name":            "testpkgi",
+			"package_name":    "test-pkg.carvel.dev",
+			"package_version": "2.0.0",
+			"status":          "Reconcile succeeded",
 		}}
 
 		require.Exactly(t, expectedOutputRows, output.Tables[0].Rows)
+	})
+
+	logger.Section("package installed pause", func() {
+
+		_, err := kappCtrl.RunWithOpts([]string{
+			"package", "installed", "pause",
+			"--package-install", pkgiName,
+		}, RunOpts{})
+		require.NoError(t, err)
+
+		out, err := kubectl.RunWithOpts([]string{"get", "app", pkgiName}, RunOpts{})
+		require.NoError(t, err)
+
+		require.Contains(t, out, "Canceled/paused")
+	})
+
+	logger.Section("package installed kick", func() {
+
+		_, err := kappCtrl.RunWithOpts([]string{
+			"package", "installed", "kick",
+			"--package-install", pkgiName,
+		}, RunOpts{})
+		require.NoError(t, err)
+
+		out, err := kubectl.RunWithOpts([]string{"get", "app", pkgiName}, RunOpts{})
+		require.NoError(t, err)
+
+		require.Contains(t, out, "Reconcile succeeded")
 	})
 
 	logger.Section("package install delete", func() {
