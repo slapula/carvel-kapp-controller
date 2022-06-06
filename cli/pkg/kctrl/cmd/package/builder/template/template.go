@@ -53,6 +53,8 @@ func (t *TemplateStep) Interact() error {
 		appTemplateList = append(appTemplateList, yttAppTemplate)
 		t.AppTemplate = appTemplateList
 	case HelmTemplate:
+		helmTemplateStep := NewHelmTemplateStep(t.PkgAuthoringUI)
+		helmTemplateStep.
 	}
 	return nil
 }

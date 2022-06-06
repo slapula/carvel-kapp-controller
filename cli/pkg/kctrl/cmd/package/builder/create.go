@@ -128,18 +128,16 @@ func (createStep *CreateStep) Interact() error {
 	if err != nil {
 		return err
 	}
-	/*
-		err = createStep.configureTemplateSection()
-		if err != nil {
-			return err
-		}
 
-			err = createStep.configureValuesSchema()
-			if err != nil {
-				return err
-			}
+	err = createStep.configureTemplateSection()
+	if err != nil {
+		return err
+	}
 
-	*/
+	//err = createStep.configureValuesSchema()
+	//if err != nil {
+	//	return err
+	//}
 
 	return nil
 }
