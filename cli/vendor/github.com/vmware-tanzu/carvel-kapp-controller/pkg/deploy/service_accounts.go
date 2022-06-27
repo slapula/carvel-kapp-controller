@@ -29,8 +29,7 @@ type ServiceAccounts struct {
 // NewServiceAccounts provides access to the ServiceAccount Resource in kubernetes
 func NewServiceAccounts(coreClient kubernetes.Interface, log logr.Logger) *ServiceAccounts {
 	tokenMgr := satoken.NewManager(coreClient, log)
-	return &ServiceAccounts{coreClient: coreClient, log: log,
-		tokenManager: tokenMgr, caCert: []byte(os.Getenv("KAPPCTRL_KUBERNETES_CA_DATA"))}
+	return &ServiceAccounts{coreClient: coreClient, log: log, tokenManager: tokenMgr}
 }
 
 func (s *ServiceAccounts) Find(genericOpts GenericOpts, saName string) (ProcessedGenericOpts, error) {
