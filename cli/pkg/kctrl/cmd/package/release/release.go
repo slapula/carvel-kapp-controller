@@ -84,7 +84,7 @@ func (o *ReleaseOptions) Run() error {
 		return err
 	}
 
-	artefactWriter := NewArtefactWriter(o.refNameFromPackageName(pkgBuild.ObjectMeta.Name), o.pkgVersion, o.outputLocation)
+	artefactWriter := NewArtefactWriter(pkgBuild.ObjectMeta.Name, o.pkgVersion, o.outputLocation)
 	err = artefactWriter.CreatePackageDir()
 	if err != nil {
 		return err
@@ -139,11 +139,12 @@ func (o *ReleaseOptions) Run() error {
 	for _, exportStep := range pkgBuild.Spec.Template.Spec.Export {
 		switch {
 		case exportStep.ImgpkgBundle != nil:
+			useKbldImagesLock = exportStep.ImgpkgBundle.UseKbldImagesLock
 			imgpkgOutput, err := ImgpkgRunner{
 				Image:             exportStep.ImgpkgBundle.Image,
 				Version:           o.pkgVersion,
 				Paths:             exportStep.IncludePaths,
-				UseKbldImagesLock: exportStep.ImgpkgBundle.UseKbldImagesLock,
+				UseKbldImagesLock: useKbldImagesLock,
 				ImgLockFilepath:   imgpkgLockPath,
 			}.Run()
 			if err != nil {
@@ -153,7 +154,6 @@ func (o *ReleaseOptions) Run() error {
 			if err != nil {
 				return err
 			}
-			useKbldImagesLock = exportStep.ImgpkgBundle.UseKbldImagesLock
 		default:
 			continue
 		}
@@ -166,8 +166,15 @@ func (o *ReleaseOptions) loadExportData(pkgBuild *cmdpkgbuild.PackageBuild) erro
 	if len(pkgBuild.Spec.Template.Spec.Export) == 0 {
 		pkgBuild.Spec.Template.Spec.Export = []appbuild.Export{
 			{
-				ImgpkgBundle: &appbuild.ImgpkgBundle{},
+				ImgpkgBundle: &appbuild.ImgpkgBundle{
+					UseKbldImagesLock: true,
+				},
 			},
+		}
+	}
+	if pkgBuild.Spec.Template.Spec.Export[0].ImgpkgBundle == nil {
+		pkgBuild.Spec.Template.Spec.Export[0].ImgpkgBundle = &appbuild.ImgpkgBundle{
+			UseKbldImagesLock: true,
 		}
 	}
 	defaultImgValue := pkgBuild.Spec.Template.Spec.Export[0].ImgpkgBundle.Image
@@ -196,9 +203,4 @@ func (o *ReleaseOptions) imgpkgBundleURLFromStdout(imgpkgStdout string) (string,
 		}
 	}
 	return "", fmt.Errorf("Could not get imgpkg bundle location")
-}
-
-func (o *ReleaseOptions) refNameFromPackageName(val string) string {
-	items := strings.Split(val, ".")
-	return strings.Join(items[:len(items)-3], ".")
 }

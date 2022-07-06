@@ -42,7 +42,13 @@ func (r ImgpkgRunner) Run() (string, error) {
 		}
 	}
 	if r.UseKbldImagesLock {
-		err = goexec.Command("cp", "-r", r.ImgLockFilepath, filepath.Join(dir, lockOutputFolder)).Run()
+		fmt.Println(r.ImgLockFilepath)
+		fmt.Println(filepath.Join(dir, lockOutputFolder))
+		err = goexec.Command("mkdir", filepath.Join(dir, lockOutputFolder)).Run()
+		if err != nil {
+			return "", err
+		}
+		err = goexec.Command("cp", r.ImgLockFilepath, filepath.Join(dir, lockOutputFolder, "images.yml")).Run()
 		if err != nil {
 			return "", err
 		}
