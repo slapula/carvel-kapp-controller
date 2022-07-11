@@ -139,7 +139,7 @@ func (o *ReleaseOptions) Run() error {
 	for _, exportStep := range pkgBuild.Spec.Template.Spec.Export {
 		switch {
 		case exportStep.ImgpkgBundle != nil:
-			useKbldImagesLock = exportStep.ImgpkgBundle.UseKbldImagesLock
+			useKbldImagesLock = true
 			imgpkgOutput, err := ImgpkgRunner{
 				Image:             exportStep.ImgpkgBundle.Image,
 				Version:           o.pkgVersion,
