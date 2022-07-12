@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	cmdcore "github.com/vmware-tanzu/carvel-kapp-controller/cli/pkg/kctrl/cmd/core"
 	kcv1alpha1 "github.com/vmware-tanzu/carvel-kapp-controller/pkg/apis/kappctrl/v1alpha1"
 	kcdatav1alpha1 "github.com/vmware-tanzu/carvel-kapp-controller/pkg/apiserver/apis/datapackaging/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,14 +21,16 @@ type ArtefactWriter struct {
 	Package     string
 	Version     string
 	ArtefactDir string
+
+	ui cmdcore.AuthoringUI
 }
 
 const (
 	packageDir = "packages"
 )
 
-func NewArtefactWriter(pkg string, version string, artefactDir string) *ArtefactWriter {
-	return &ArtefactWriter{Package: pkg, Version: version, ArtefactDir: artefactDir}
+func NewArtefactWriter(pkg string, version string, artefactDir string, ui cmdcore.AuthoringUI) *ArtefactWriter {
+	return &ArtefactWriter{Package: pkg, Version: version, ArtefactDir: artefactDir, ui: ui}
 }
 
 func (w *ArtefactWriter) CreatePackageDir() error {
@@ -122,6 +125,7 @@ func (w *ArtefactWriter) createFileIfNotExists(path string, data []byte) error {
 			}
 		}
 	}
+	w.ui.PrintHeaderWithContextText("Artefact created", path)
 	return nil
 }
 
@@ -130,5 +134,6 @@ func (w *ArtefactWriter) createOrOverwriteFile(path string, data []byte) error {
 	if err != nil {
 		return err
 	}
+	w.ui.PrintHeaderWithContextText("Artefact created", path)
 	return nil
 }
