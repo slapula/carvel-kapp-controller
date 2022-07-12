@@ -18,6 +18,7 @@ var Version = "develop"
 
 func main() {
 	ctrlOpts := Options{}
+	ctrlOpts.ControllerVersion = Version
 	var sidecarexec bool
 
 	flag.IntVar(&ctrlOpts.Concurrency, "concurrency", 10, "Max concurrent reconciles")

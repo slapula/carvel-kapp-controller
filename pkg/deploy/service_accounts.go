@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/vmware-tanzu/carvel-kapp-controller/pkg/apis/kappctrl/v1alpha1"
 	"github.com/vmware-tanzu/carvel-kapp-controller/pkg/satoken"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,6 +51,29 @@ func (s *ServiceAccounts) Find(genericOpts GenericOpts, saName string) (Processe
 	}
 
 	return pgoForSA, nil
+}
+
+func ProcessOpts(saName string, clusterOpts *v1alpha1.AppCluster, genericOpts GenericOpts, serviceAccounts *ServiceAccounts, kubeconfigSecrets *KubeconfigSecrets) (*ProcessedGenericOpts, error) {
+	var err error
+	var processedGenericOpts ProcessedGenericOpts
+
+	switch {
+	case len(saName) > 0:
+		processedGenericOpts, err = serviceAccounts.Find(genericOpts, saName)
+		if err != nil {
+			return nil, err
+		}
+
+	case clusterOpts != nil:
+		processedGenericOpts, err = kubeconfigSecrets.Find(genericOpts, clusterOpts)
+		if err != nil {
+			return nil, err
+		}
+
+	default:
+		return nil, fmt.Errorf("Expected service account or cluster specified")
+	}
+	return &processedGenericOpts, nil
 }
 
 func (s *ServiceAccounts) fetchServiceAccount(nsName string, saName string) (string, error) {
@@ -99,21 +123,20 @@ kind: Config
 clusters:
 - name: dst-cluster
   cluster:
-    certificate-authority-data: "%s"
+    certificate-authority-data: "%[1]s"
     server: https://${KAPP_KUBERNETES_SERVICE_HOST_PORT}
 users:
 - name: dst-user
   user:
-    token: "%s"
+    token: "%[2]s"
 contexts:
 - name: dst-ctx
   context:
     cluster: dst-cluster
-    namespace: "%s"
+    namespace: "%[3]s"
     user: dst-user
 current-context: dst-ctx
 `
-
 	caB64Encoded := base64.StdEncoding.EncodeToString(caCert)
 
 	return fmt.Sprintf(kubeconfigYAMLTpl, caB64Encoded, []byte(token), []byte(nsBytes)), nil

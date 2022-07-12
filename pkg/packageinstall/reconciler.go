@@ -22,6 +22,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
+// ControllerVersion holds the semver string for the version of kapp-controller that is running, so that we can compare it against version constraints in packages
+var ControllerVersion string
+
 // Reconciler is responsible for reconciling PackageInstalls.
 type Reconciler struct {
 	kcClient               kcclient.Interface
@@ -34,7 +37,10 @@ type Reconciler struct {
 // NewReconciler is the constructor for the Reconciler struct
 func NewReconciler(kcClient kcclient.Interface, pkgClient pkgclient.Interface,
 	coreClient kubernetes.Interface, pkgToPkgInstallHandler *PackageInstallVersionHandler,
-	log logr.Logger) *Reconciler {
+	log logr.Logger, controllerVersion string) *Reconciler {
+
+	ControllerVersion = controllerVersion
+
 	return &Reconciler{kcClient, pkgClient, coreClient, pkgToPkgInstallHandler, log}
 }
 

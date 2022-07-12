@@ -5,6 +5,7 @@ package datapackaging
 
 import (
 	kcv1alpha1 "github.com/vmware-tanzu/carvel-kapp-controller/pkg/apis/kappctrl/v1alpha1"
+	versions "github.com/vmware-tanzu/carvel-vendir/pkg/vendir/versions/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -96,6 +97,13 @@ type PackageSpec struct {
 	// This is especially useful if the underlying versions do not match the Package version
 	// +optional
 	IncludedSoftware []IncludedSoftware `json:"includedSoftware,omitempty"`
+
+	// KappControllerVersionSelection specifies the versions of kapp-controller which can install this package
+	// +optional
+	KappControllerVersionSelection *versions.VersionSelectionSemver `json:"kappControllerVersionSelection,omitempty"`
+	// KubernetesVersionSelection specifies the versions of k8s which this package can be installed on
+	// +optional
+	KubernetesVersionSelection *versions.VersionSelectionSemver `json:"kubernetesVersionSelection,omitempty"`
 }
 
 type PackageMetadataSpec struct {

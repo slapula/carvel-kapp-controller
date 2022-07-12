@@ -7,6 +7,7 @@ package v1alpha1
 
 import (
 	kappctrlv1alpha1 "github.com/vmware-tanzu/carvel-kapp-controller/pkg/apis/kappctrl/v1alpha1"
+	versionsv1alpha1 "github.com/vmware-tanzu/carvel-vendir/pkg/vendir/versions/v1alpha1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -224,6 +225,16 @@ func (in *PackageSpec) DeepCopyInto(out *PackageSpec) {
 		in, out := &in.IncludedSoftware, &out.IncludedSoftware
 		*out = make([]IncludedSoftware, len(*in))
 		copy(*out, *in)
+	}
+	if in.KappControllerVersionSelection != nil {
+		in, out := &in.KappControllerVersionSelection, &out.KappControllerVersionSelection
+		*out = new(versionsv1alpha1.VersionSelectionSemver)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.KubernetesVersionSelection != nil {
+		in, out := &in.KubernetesVersionSelection, &out.KubernetesVersionSelection
+		*out = new(versionsv1alpha1.VersionSelectionSemver)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }

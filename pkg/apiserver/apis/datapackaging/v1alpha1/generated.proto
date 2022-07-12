@@ -6,6 +6,7 @@ syntax = "proto2";
 package github.com.vmware_tanzu.carvel_kapp_controller.pkg.apiserver.apis.datapackaging.v1alpha1;
 
 import "github.com/vmware-tanzu/carvel-kapp-controller/pkg/apis/kappctrl/v1alpha1/generated.proto";
+import "github.com/vmware-tanzu/carvel-vendir/pkg/vendir/versions/v1alpha1/generated.proto";
 import "k8s.io/apimachinery/pkg/apis/meta/v1/generated.proto";
 import "k8s.io/apimachinery/pkg/runtime/generated.proto";
 import "k8s.io/apimachinery/pkg/runtime/schema/generated.proto";
@@ -115,6 +116,15 @@ message PackageSpec {
   // This is especially useful if the underlying versions do not match the Package version
   // +optional
   repeated IncludedSoftware includedSoftware = 9;
+
+  // TODO: if we do it this way , the "versions.VersionSelectionSemver" will include pre-releases, and also we should check whether it works with vendor-speicific k8s versions
+  // KappControllerVersionSelection specifies the versions of kapp-controller which can install this package
+  // +optional
+  optional github.com.vmware_tanzu.carvel_vendir.pkg.vendir.versions.v1alpha1.VersionSelectionSemver kappControllerVersionSelection = 10;
+
+  // KubernetesVersionSelection specifies the versions of k8s which this package can be installed on
+  // +optional
+  optional github.com.vmware_tanzu.carvel_vendir.pkg.vendir.versions.v1alpha1.VersionSelectionSemver kubernetesVersionSelection = 11;
 }
 
 message ValuesSchema {

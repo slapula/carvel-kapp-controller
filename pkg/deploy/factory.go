@@ -4,8 +4,6 @@
 package deploy
 
 import (
-	"fmt"
-
 	"github.com/go-logr/logr"
 	"github.com/vmware-tanzu/carvel-kapp-controller/pkg/apis/kappctrl/v1alpha1"
 	"github.com/vmware-tanzu/carvel-kapp-controller/pkg/exec"
@@ -41,28 +39,12 @@ func NewFactory(coreClient kubernetes.Interface,
 func (f Factory) NewKapp(opts v1alpha1.AppDeployKapp, saName string,
 	clusterOpts *v1alpha1.AppCluster, genericOpts GenericOpts, cancelCh chan struct{}) (*Kapp, error) {
 
-	var err error
-	var processedGenericOpts ProcessedGenericOpts
-	const suffix string = ".app"
-
-	switch {
-	case len(saName) > 0:
-		processedGenericOpts, err = f.serviceAccounts.Find(genericOpts, saName)
-		if err != nil {
-			return nil, err
-		}
-
-	case clusterOpts != nil:
-		processedGenericOpts, err = f.kubeconfigSecrets.Find(genericOpts, clusterOpts)
-		if err != nil {
-			return nil, err
-		}
-
-	default:
-		return nil, fmt.Errorf("Expected service account or cluster specified")
+	processedGenericOpts, err := ProcessOpts(saName, clusterOpts, genericOpts, f.serviceAccounts, f.kubeconfigSecrets)
+	if err != nil {
+		return nil, err
 	}
-
-	return NewKapp(suffix, opts, processedGenericOpts,
+	const suffix string = ".app"
+	return NewKapp(suffix, opts, *processedGenericOpts,
 		f.globalKappDeployRawOpts(), cancelCh, f.cmdRunner), nil
 }
 

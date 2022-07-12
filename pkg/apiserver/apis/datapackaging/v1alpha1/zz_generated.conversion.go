@@ -10,6 +10,7 @@ import (
 
 	kappctrlv1alpha1 "github.com/vmware-tanzu/carvel-kapp-controller/pkg/apis/kappctrl/v1alpha1"
 	datapackaging "github.com/vmware-tanzu/carvel-kapp-controller/pkg/apiserver/apis/datapackaging"
+	versionsv1alpha1 "github.com/vmware-tanzu/carvel-vendir/pkg/vendir/versions/v1alpha1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -332,6 +333,8 @@ func autoConvert_v1alpha1_PackageSpec_To_datapackaging_PackageSpec(in *PackageSp
 		return err
 	}
 	out.IncludedSoftware = *(*[]datapackaging.IncludedSoftware)(unsafe.Pointer(&in.IncludedSoftware))
+	out.KappControllerVersionSelection = (*versionsv1alpha1.VersionSelectionSemver)(unsafe.Pointer(in.KappControllerVersionSelection))
+	out.KubernetesVersionSelection = (*versionsv1alpha1.VersionSelectionSemver)(unsafe.Pointer(in.KubernetesVersionSelection))
 	return nil
 }
 
@@ -354,6 +357,8 @@ func autoConvert_datapackaging_PackageSpec_To_v1alpha1_PackageSpec(in *datapacka
 		return err
 	}
 	out.IncludedSoftware = *(*[]IncludedSoftware)(unsafe.Pointer(&in.IncludedSoftware))
+	out.KappControllerVersionSelection = (*versionsv1alpha1.VersionSelectionSemver)(unsafe.Pointer(in.KappControllerVersionSelection))
+	out.KubernetesVersionSelection = (*versionsv1alpha1.VersionSelectionSemver)(unsafe.Pointer(in.KubernetesVersionSelection))
 	return nil
 }
 

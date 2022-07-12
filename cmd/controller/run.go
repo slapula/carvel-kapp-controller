@@ -46,6 +46,7 @@ type Options struct {
 	PackagingGloablNS      string
 	MetricsBindAddress     string
 	APIPriorityAndFairness bool
+	ControllerVersion      string
 }
 
 // Based on https://github.com/kubernetes-sigs/controller-runtime/blob/8f633b179e1c704a6e40440b528252f147a3362a/examples/builtins/main.go
@@ -198,7 +199,7 @@ func Run(opts Options, runLog logr.Logger) error {
 			kcClient, opts.PackagingGloablNS, runLog.WithName("handler"))
 
 		reconciler := pkginstall.NewReconciler(
-			kcClient, pkgClient, coreClient, pkgToPkgInstallHandler, runLog.WithName("pkgi"))
+			kcClient, pkgClient, coreClient, pkgToPkgInstallHandler, runLog.WithName("pkgi"), opts.ControllerVersion)
 
 		ctrl, err := controller.New("pkgi", mgr, controller.Options{
 			Reconciler:              reconciler,

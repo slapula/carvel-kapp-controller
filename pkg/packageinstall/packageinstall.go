@@ -6,6 +6,7 @@ package packageinstall
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/go-logr/logr"
 	"github.com/vmware-tanzu/carvel-kapp-controller/pkg/apis/kappctrl/v1alpha1"
@@ -15,6 +16,7 @@ import (
 	pkgclient "github.com/vmware-tanzu/carvel-kapp-controller/pkg/apiserver/client/clientset/versioned"
 	kcclient "github.com/vmware-tanzu/carvel-kapp-controller/pkg/client/clientset/versioned"
 	"github.com/vmware-tanzu/carvel-kapp-controller/pkg/client/clientset/versioned/scheme"
+	"github.com/vmware-tanzu/carvel-kapp-controller/pkg/deploy"
 	"github.com/vmware-tanzu/carvel-kapp-controller/pkg/reconciler"
 	"github.com/vmware-tanzu/carvel-vendir/pkg/vendir/versions"
 	verv1alpha1 "github.com/vmware-tanzu/carvel-vendir/pkg/vendir/versions/v1alpha1"
@@ -23,7 +25,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -40,10 +44,11 @@ type PackageInstallCR struct {
 	model           *pkgingv1alpha1.PackageInstall
 	unmodifiedModel *pkgingv1alpha1.PackageInstall
 
-	log        logr.Logger
-	kcclient   kcclient.Interface
-	pkgclient  pkgclient.Interface
-	coreClient kubernetes.Interface
+	log               logr.Logger
+	kcclient          kcclient.Interface
+	pkgclient         pkgclient.Interface
+	coreClient        kubernetes.Interface
+	controllerVersion string
 }
 
 func NewPackageInstallCR(model *pkgingv1alpha1.PackageInstall, log logr.Logger,
@@ -201,6 +206,107 @@ func (pi *PackageInstallCR) reconcileAppWithPackage(existingApp *kcv1alpha1.App,
 	return reconcile.Result{}, nil
 }
 
+func getPodsK8sURL() (string, error) {
+	host := os.Getenv("KUBERNETES_SERVICE_HOST")
+	port := os.Getenv("KUBERNETES_SERVICE_PORT")
+	if host == "" || port == "" {
+		return "", fmt.Errorf("Unable to read KUBERNETES_SERVICE_HOST/PORT environment vars.")
+	}
+	return fmt.Sprintf("%s:%s", host, port), nil
+}
+
+func (pi *PackageInstallCR) getClusterVersion() (*version.Info, error) {
+	// this logic is duplicated here and in deploy.ProcessOpts: if the serviceAccount name is present, we will be deploying to this cluster
+	if len(pi.model.Spec.ServiceAccountName) > 0 {
+		return pi.coreClient.Discovery().ServerVersion()
+	}
+
+	processedGenericOpts, err := deploy.ProcessOpts(
+		"", // empty service account name is how we signal to use the other cluster creds provided in the CR instead of deploying to this cluster
+		pi.model.Spec.Cluster,
+		deploy.GenericOpts{Name: pi.model.ObjectMeta.Name, Namespace: pi.model.ObjectMeta.Namespace},
+		deploy.NewServiceAccounts(pi.coreClient, pi.log),
+		deploy.NewKubeconfigSecrets(pi.coreClient))
+	if err != nil {
+		return nil, err
+	}
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(processedGenericOpts.Kubeconfig.AsYAML()))
+	if err != nil {
+		return nil, err
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	vi, err := clientset.Discovery().ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+	return vi, nil
+}
+
+func (pi *PackageInstallCR) clusterVersionConstraints(pkg *datapkgingv1alpha1.Package) error {
+	const kubernetesVersionOverrideAnnotation = "packaging.carvel.dev/ignore-kubernetes-version-selection"
+	_, found := pi.model.Annotations[kubernetesVersionOverrideAnnotation]
+	if found {
+		pi.log.Info("Found k8s Version override annotation; not applying version constraints")
+		return nil
+	}
+
+	if pkg.Spec.KubernetesVersionSelection != nil {
+		vi, err := pi.getClusterVersion()
+		if err != nil {
+			return err
+		}
+
+		semverVersions := versions.NewRelaxedSemversNoErr([]string{vi.GitVersion})
+		matchedVers, err := semverVersions.FilterConstraints(pkg.Spec.KubernetesVersionSelection.Constraints)
+		if err != nil {
+			return err
+		}
+
+		if matchedVers.Len() == 0 {
+			return fmt.Errorf("Cluster is running kubernetes %s but package constrained versions to: %s",
+				vi.GitVersion, pkg.Spec.KubernetesVersionSelection.Constraints)
+		}
+	}
+
+	return nil
+}
+
+func (pi *PackageInstallCR) kcVersionConstraints(pkg *datapkgingv1alpha1.Package) error {
+	const kappControllerVersionOverrideAnnotation = "packaging.carvel.dev/ignore-kapp-controller-version-selection"
+	_, found := pi.model.Annotations[kappControllerVersionOverrideAnnotation]
+	if found {
+		pi.log.Info("Found kapp-controller Version override annotation; not applying version constraints")
+		return nil
+	}
+
+	if pkg.Spec.KappControllerVersionSelection != nil {
+		semverVersions := versions.NewRelaxedSemversNoErr([]string{ControllerVersion})
+		matchedVers, err := semverVersions.FilterConstraints(pkg.Spec.KappControllerVersionSelection.Constraints)
+		if err != nil {
+			return err
+		}
+
+		if matchedVers.Len() == 0 {
+			return fmt.Errorf("Cluster is running kapp-controller %s but package constrained versions to: %s",
+				ControllerVersion, pkg.Spec.KappControllerVersionSelection.Constraints)
+		}
+	}
+
+	return nil
+}
+
+func (pi *PackageInstallCR) passesAdditionalConstraints(pkg *datapkgingv1alpha1.Package) error {
+	err := pi.clusterVersionConstraints(pkg)
+	if err != nil {
+		return err
+	}
+
+	return pi.kcVersionConstraints(pkg)
+}
+
 func (pi *PackageInstallCR) referencedPkgVersion() (datapkgingv1alpha1.Package, error) {
 	if pi.model.Spec.PackageRef == nil {
 		return datapkgingv1alpha1.Package{}, fmt.Errorf("Expected non nil PackageRef")
@@ -216,14 +322,23 @@ func (pi *PackageInstallCR) referencedPkgVersion() (datapkgingv1alpha1.Package, 
 	if err != nil {
 		return datapkgingv1alpha1.Package{}, err
 	}
+	if len(pkgList.Items) == 0 {
+		return datapkgingv1alpha1.Package{}, fmt.Errorf("Package %s not found", pi.model.Spec.PackageRef.RefName)
+	}
 
 	var versionStrs []string
 	versionToPkg := map[string]datapkgingv1alpha1.Package{}
 
+	rejectPkgReasons := []string{}
 	for _, pkg := range pkgList.Items {
 		if pkg.Spec.RefName == pi.model.Spec.PackageRef.RefName {
-			versionStrs = append(versionStrs, pkg.Spec.Version)
-			versionToPkg[pkg.Spec.Version] = pkg
+			err = pi.passesAdditionalConstraints(&pkg)
+			if err == nil {
+				versionStrs = append(versionStrs, pkg.Spec.Version)
+				versionToPkg[pkg.Spec.Version] = pkg
+			} else {
+				rejectPkgReasons = append(rejectPkgReasons, err.Error())
+			}
 		}
 	}
 
@@ -241,7 +356,10 @@ func (pi *PackageInstallCR) referencedPkgVersion() (datapkgingv1alpha1.Package, 
 
 	selectedVersion, err := versions.HighestConstrainedVersion(versionStrs, verConfig)
 	if err != nil {
-		return datapkgingv1alpha1.Package{}, err
+		retErr := fmt.Errorf(
+			"Pre-Filter: Number of Packages excluded due to k8s or kc constraints: %d. (details: %v)\nPost-Exclusion Package Version Selection: %v",
+			len(rejectPkgReasons), rejectPkgReasons, err.Error())
+		return datapkgingv1alpha1.Package{}, retErr
 	}
 
 	if pkg, found := versionToPkg[selectedVersion]; found {
