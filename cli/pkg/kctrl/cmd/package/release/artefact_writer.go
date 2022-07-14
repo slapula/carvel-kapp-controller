@@ -20,7 +20,7 @@ import (
 type ArtifactWriter struct {
 	Package     string
 	Version     string
-	ArtefactDir string
+	ArtifactDir string
 
 	ui cmdcore.AuthoringUI
 }
@@ -29,12 +29,12 @@ const (
 	packageDir = "packages"
 )
 
-func NewArtifactWriter(pkg string, version string, artefactDir string, ui cmdcore.AuthoringUI) *ArtifactWriter {
-	return &ArtifactWriter{Package: pkg, Version: version, ArtefactDir: artefactDir, ui: ui}
+func NewArtifactWriter(pkg string, version string, artifactDir string, ui cmdcore.AuthoringUI) *ArtifactWriter {
+	return &ArtifactWriter{Package: pkg, Version: version, ArtifactDir: artifactDir, ui: ui}
 }
 
 func (w *ArtifactWriter) Write(appSpec *kcv1alpha1.AppSpec) error {
-	path := filepath.Join(w.ArtefactDir, packageDir, w.Package)
+	path := filepath.Join(w.ArtifactDir, packageDir, w.Package)
 	err := os.MkdirAll(path, os.ModePerm)
 	if err != nil {
 		return err
@@ -134,7 +134,7 @@ func (w *ArtifactWriter) createFileIfNotExists(path string, data []byte) error {
 			}
 		}
 	}
-	w.ui.PrintHeaderWithContextText("Artefact created", path)
+	w.ui.PrintHeaderWithContextText("Artifact created", path)
 	return nil
 }
 
@@ -143,6 +143,6 @@ func (w *ArtifactWriter) createOrOverwriteFile(path string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	w.ui.PrintHeaderWithContextText("Artefact created", path)
+	w.ui.PrintHeaderWithContextText("Artifact created", path)
 	return nil
 }
