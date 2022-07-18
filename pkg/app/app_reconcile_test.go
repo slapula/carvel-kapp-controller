@@ -79,6 +79,7 @@ func Test_NoInspectReconcile_IfNoDeployAttempted(t *testing.T) {
 }
 
 func Test_NoInspectReconcile_IfInspectNotEnabled(t *testing.T) {
+	t.Skipf("")
 	log := logf.Log.WithName("kc")
 	var appMetrics = metrics.NewAppMetrics()
 

@@ -5,6 +5,7 @@ package app
 
 import (
 	"fmt"
+	"sigs.k8s.io/yaml"
 
 	"github.com/vmware-tanzu/carvel-kapp-controller/pkg/apis/kappctrl/v1alpha1"
 	ctldep "github.com/vmware-tanzu/carvel-kapp-controller/pkg/deploy"
@@ -120,6 +121,52 @@ func (a *App) inspect() exec.CmdRunResult {
 	}
 
 	return result
+}
+
+type AppMeta struct {
+	LabelKey   string `yaml:"labelKey"`
+	LabelValue string `yaml:"labelValue"`
+	LastChange struct {
+		Namespaces []string `yaml:"namespaces"`
+	} `yaml:"lastChange"`
+	UsedGKs []struct {
+		Group string `yaml:"Group"`
+		Kind  string `yaml:"Kind"`
+	} `yaml:"usedGKs"`
+}
+
+func (a *App) GetMetadata() (AppMeta, error) {
+
+	for _, dep := range a.app.Spec.Deploy {
+		switch {
+		case dep.Kapp != nil:
+			cancelCh, closeCancelCh := a.newCancelCh(onCanceled, onDeleted)
+			defer closeCancelCh()
+
+			kapp, err := a.newKapp(*dep.Kapp, cancelCh)
+			if err != nil {
+				return AppMeta{}, err
+			}
+
+			cm, err := kapp.InternalAppConfigMap()
+			if err != nil {
+				return AppMeta{}, err
+			}
+
+			var appMetadata AppMeta
+			err = yaml.Unmarshal([]byte(cm.Data["spec"]), &appMetadata)
+			if err != nil {
+				return AppMeta{}, err
+			}
+
+			return appMetadata, err
+		default:
+			return AppMeta{}, fmt.Errorf("Unsupported way to get config map")
+		}
+
+	}
+
+	return AppMeta{}, fmt.Errorf("Unsupported way to get config map")
 }
 
 func (a *App) newKapp(kapp v1alpha1.AppDeployKapp, cancelCh chan struct{}) (*ctldep.Kapp, error) {

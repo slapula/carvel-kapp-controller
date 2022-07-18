@@ -5,7 +5,9 @@ package deploy
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	corev1 "k8s.io/api/core/v1"
 	"os"
 	goexec "os/exec"
 	"strings"
@@ -13,6 +15,8 @@ import (
 
 	"github.com/vmware-tanzu/carvel-kapp-controller/pkg/apis/kappctrl/v1alpha1"
 	"github.com/vmware-tanzu/carvel-kapp-controller/pkg/exec"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 const (
@@ -28,6 +32,7 @@ type Kapp struct {
 	globalDeployRawOpts []string
 	cancelCh            chan struct{}
 	cmdRunner           exec.CmdRunner
+	maps                v1.ConfigMapInterface
 }
 
 var _ Deploy = &Kapp{}
@@ -35,10 +40,9 @@ var _ Deploy = &Kapp{}
 // NewKapp takes the kapp yaml from spec.deploy.kapp as arg kapp,
 // additional info from the larger app resource (e.g. service account, name, namespace) as genericOpts,
 // and a cancel channel that gets passed through to the exec call that runs kapp.
-func NewKapp(appSuffix string, opts v1alpha1.AppDeployKapp, genericOpts ProcessedGenericOpts,
-	globalDeployRawOpts []string, cancelCh chan struct{}, cmdRunner exec.CmdRunner) *Kapp {
+func NewKapp(appSuffix string, opts v1alpha1.AppDeployKapp, genericOpts ProcessedGenericOpts, globalDeployRawOpts []string, cancelCh chan struct{}, cmdRunner exec.CmdRunner, maps v1.ConfigMapInterface) *Kapp {
 
-	return &Kapp{appSuffix, opts, genericOpts, globalDeployRawOpts, cancelCh, cmdRunner}
+	return &Kapp{appSuffix, opts, genericOpts, globalDeployRawOpts, cancelCh, cmdRunner, maps}
 }
 
 // Deploy takes the output from templating, and the app name,
@@ -122,6 +126,15 @@ func (a *Kapp) Inspect() exec.CmdRunResult {
 	result.AttachErrorf("Inspecting: %s", err)
 
 	return result
+}
+
+func (a *Kapp) InternalAppConfigMap() (*corev1.ConfigMap, error) {
+	configMap, err := a.maps.Get(context.TODO(), a.genericOpts.Name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return configMap, nil
 }
 
 func (a *Kapp) trackCmdOutput(cmd *goexec.Cmd, startedApplyingFunc func(),

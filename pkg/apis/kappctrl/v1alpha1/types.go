@@ -162,6 +162,20 @@ type AppStatusDeploy struct {
 	StartedAt metav1.Time `json:"startedAt,omitempty"`
 	// +optional
 	UpdatedAt metav1.Time `json:"updatedAt,omitempty"`
+	// +optional
+	KappDeployStatus KappDeployStatus `json:"kapp,omitempty"`
+}
+
+// +protobuf=false
+type KappDeployStatus struct {
+	AssociatedResources AssociatedResources `json:"associatedResources,omitempty"`
+}
+
+// +protobuf=false
+type AssociatedResources struct {
+	Label      string             `json:"label,omitempty"`
+	Namespaces []string           `json:"namespaces,omitempty"`
+	GroupKinds []metav1.GroupKind `json:"groupKinds,omitempty"`
 }
 
 // +protobuf=false

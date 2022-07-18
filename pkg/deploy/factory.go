@@ -63,7 +63,7 @@ func (f Factory) NewKapp(opts v1alpha1.AppDeployKapp, saName string,
 	}
 
 	return NewKapp(suffix, opts, processedGenericOpts,
-		f.globalKappDeployRawOpts(), cancelCh, f.cmdRunner), nil
+		f.globalKappDeployRawOpts(), cancelCh, f.cmdRunner, f.coreClient.CoreV1().ConfigMaps("kappctrl-test")), nil
 }
 
 // NewKappPrivileged is used for package repositories where users aren't required to provide
@@ -83,7 +83,7 @@ func (f Factory) NewKappPrivilegedForPackageRepository(opts v1alpha1.AppDeployKa
 		DangerousUsePodServiceAccount: true,
 	}
 
-	return NewKapp(suffix, opts, pgo, f.globalKappDeployRawOpts(), cancelCh, f.cmdRunner), nil
+	return NewKapp(suffix, opts, pgo, f.globalKappDeployRawOpts(), cancelCh, f.cmdRunner, nil), nil
 }
 
 func (f Factory) globalKappDeployRawOpts() []string {

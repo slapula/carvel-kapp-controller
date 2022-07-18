@@ -10,7 +10,7 @@ if [ -z "$KAPPCTRL_E2E_NAMESPACE" ]; then
 fi
 # create ns if not exists because the `apply -f -` won't complain on a no-op if the ns already exists.
 kubectl create ns $KAPPCTRL_E2E_NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
-go test ./test/e2e/kappcontroller -timeout 60m $@ | tee tmp/e2eoutput.txt
+go test ./test/e2e/kappcontroller -v -timeout 60m $@ | tee tmp/e2eoutput.txt
 
 if [ -z "$KAPPCTRL_E2E_SECRETGEN_CONTROLLER" ]; then
   echo "skipping secretgencontroller tests";
