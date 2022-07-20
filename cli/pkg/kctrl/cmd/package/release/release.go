@@ -12,7 +12,7 @@ import (
 
 	"github.com/cppforlife/go-cli-ui/ui"
 	"github.com/spf13/cobra"
-	"github.com/vmware-tanzu/carvel-kapp-controller/cli/pkg/kctrl/cmd/app/init/appbuild"
+	appInit "github.com/vmware-tanzu/carvel-kapp-controller/cli/pkg/kctrl/cmd/app/init"
 	cmdapprelease "github.com/vmware-tanzu/carvel-kapp-controller/cli/pkg/kctrl/cmd/app/release"
 	cmdcore "github.com/vmware-tanzu/carvel-kapp-controller/cli/pkg/kctrl/cmd/core"
 	cmdpkgbuild "github.com/vmware-tanzu/carvel-kapp-controller/cli/pkg/kctrl/cmd/package/init"
@@ -89,9 +89,9 @@ func (o *ReleaseOptions) Run() error {
 
 	// To be removed and moved to a question in case we have more config/variations around this
 	if pkgBuild.Spec.Release == nil || len(pkgBuild.Spec.Release) == 0 {
-		pkgBuild.Spec.Release = []appbuild.Release{
+		pkgBuild.Spec.Release = []appInit.Release{
 			{
-				Resource: &appbuild.ReleaseResource{},
+				Resource: &appInit.ReleaseResource{},
 			},
 		}
 		err = pkgBuild.Save()
@@ -143,16 +143,16 @@ func (o *ReleaseOptions) releaseResources(appSpec kcv1alpha1.AppSpec, packageNam
 
 func (o *ReleaseOptions) loadExportData(pkgBuild *cmdpkgbuild.PackageBuild) error {
 	if len(pkgBuild.Spec.Template.Spec.Export) == 0 {
-		pkgBuild.Spec.Template.Spec.Export = []appbuild.Export{
+		pkgBuild.Spec.Template.Spec.Export = []appInit.Export{
 			{
-				ImgpkgBundle: &appbuild.ImgpkgBundle{
+				ImgpkgBundle: &appInit.ImgpkgBundle{
 					UseKbldImagesLock: true,
 				},
 			},
 		}
 	}
 	if pkgBuild.Spec.Template.Spec.Export[0].ImgpkgBundle == nil {
-		pkgBuild.Spec.Template.Spec.Export[0].ImgpkgBundle = &appbuild.ImgpkgBundle{
+		pkgBuild.Spec.Template.Spec.Export[0].ImgpkgBundle = &appInit.ImgpkgBundle{
 			UseKbldImagesLock: true,
 		}
 	}
