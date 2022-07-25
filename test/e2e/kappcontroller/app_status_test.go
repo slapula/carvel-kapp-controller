@@ -189,7 +189,7 @@ spec:
 		t.Fatalf("Failed to unmarshal: %s", err)
 	}
 
-	expectedAppLabel := kapp.Run([]string{"label", "-a", name, "--tty=false"})
+	expectedAppLabel := kapp.Run([]string{"label", "-a", name + ".app", "--tty=false"})
 
 	expectedStatus := v1alpha1.AppStatus{
 		GenericStatus: v1alpha1.GenericStatus{
@@ -210,10 +210,7 @@ spec:
 					Label:      expectedAppLabel,
 					Namespaces: []string{"kappctrl-test"},
 					GroupKinds: []metav1.GroupKind{
-						{"", "ServiceAccount"},
-						{"kappctrl.k14s.io", "App"},
-						{"rbac.authorization.k8s.io", "Role"},
-						{"rbac.authorization.k8s.io", "RoleBinding"},
+						{"", "ConfigMap"},
 					},
 				},
 			},

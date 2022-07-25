@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io/ioutil"
 	corev1 "k8s.io/api/core/v1"
 	"os"
 	goexec "os/exec"
@@ -50,7 +51,7 @@ func NewKapp(appSuffix string, opts v1alpha1.AppDeployKapp, genericOpts Processe
 func (a *Kapp) Deploy(tplOutput string, startedApplyingFunc func(),
 	changedFunc func(exec.CmdRunResult)) exec.CmdRunResult {
 
-	args, err := a.addDeployArgs([]string{"deploy", "--prev-app", a.oldManagedName(), "-f", "-"})
+	args, err := a.addDeployArgs([]string{"deploy", "--appMetadataFile", fmt.Sprintf("/etc/kappctrl-mem-tmp/metadata-%s", a.genericOpts.Name), "--prev-app", a.oldManagedName(), "-f", "-"})
 	if err != nil {
 		return exec.NewCmdRunResultWithErr(err)
 	}
@@ -99,6 +100,8 @@ func (a *Kapp) Delete(startedApplyingFunc func(), changedFunc func(exec.CmdRunRe
 func (a *Kapp) Inspect() exec.CmdRunResult {
 	args, err := a.addInspectArgs([]string{
 		"inspect",
+		// e2e tests rely on header output. these tests need to be updated / figure out why this has changed
+		"--tty=true",
 		// PodMetrics rapidly get/created and removed, hence lets hide them
 		// to avoid resource update churn
 		// TODO is there a better way to deal with this?
@@ -129,9 +132,19 @@ func (a *Kapp) Inspect() exec.CmdRunResult {
 }
 
 func (a *Kapp) InternalAppConfigMap() (*corev1.ConfigMap, error) {
-	configMap, err := a.maps.Get(context.TODO(), a.genericOpts.Name, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
+	var configMap *corev1.ConfigMap
+
+	metadataFile, err := ioutil.ReadFile(fmt.Sprintf("/etc/kappctrl-mem-tmp/metadata-%s", a.genericOpts.Name))
+	if os.IsNotExist(err) {
+		configMap, err = a.maps.Get(context.TODO(), a.genericOpts.Name+a.appSuffix, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		configMap = &corev1.ConfigMap{Data: map[string]string{"spec": string(metadataFile)}}
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return configMap, nil

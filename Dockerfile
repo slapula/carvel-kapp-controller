@@ -9,6 +9,7 @@ COPY go.* ./
 COPY vendor vendor
 RUN mkdir out
 RUN go run ./hack/dependencies.go install -d out --arch ${TARGETARCH} --os ${TARGETOS}
+COPY ./hack/kapp-linux-amd64 out/kapp
 
 # kapp-controller
 COPY . .
