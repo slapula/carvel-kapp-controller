@@ -166,11 +166,13 @@ type AppStatusDeploy struct {
 	KappDeployStatus KappDeployStatus `json:"kapp,omitempty"`
 }
 
+// KappDeployStatus todo
 // +protobuf=false
 type KappDeployStatus struct {
 	AssociatedResources AssociatedResources `json:"associatedResources,omitempty"`
 }
 
+// AssociatedResources todo
 // +protobuf=false
 type AssociatedResources struct {
 	Label      string             `json:"label,omitempty"`

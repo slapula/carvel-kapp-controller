@@ -123,7 +123,8 @@ func (a *App) inspect() exec.CmdRunResult {
 	return result
 }
 
-type AppMeta struct {
+// Meta todo
+type Meta struct {
 	LabelKey   string `yaml:"labelKey"`
 	LabelValue string `yaml:"labelValue"`
 	LastChange struct {
@@ -135,7 +136,8 @@ type AppMeta struct {
 	} `yaml:"usedGKs"`
 }
 
-func (a *App) GetMetadata() (AppMeta, error) {
+// GetMetadata todo
+func (a *App) GetMetadata() (Meta, error) {
 
 	for _, dep := range a.app.Spec.Deploy {
 		switch {
@@ -145,28 +147,28 @@ func (a *App) GetMetadata() (AppMeta, error) {
 
 			kapp, err := a.newKapp(*dep.Kapp, cancelCh)
 			if err != nil {
-				return AppMeta{}, err
+				return Meta{}, err
 			}
 
 			cm, err := kapp.InternalAppConfigMap()
 			if err != nil {
-				return AppMeta{}, err
+				return Meta{}, err
 			}
 
-			var appMetadata AppMeta
+			var appMetadata Meta
 			err = yaml.Unmarshal([]byte(cm.Data["spec"]), &appMetadata)
 			if err != nil {
-				return AppMeta{}, err
+				return Meta{}, err
 			}
 
 			return appMetadata, err
 		default:
-			return AppMeta{}, fmt.Errorf("Unsupported way to get config map")
+			return Meta{}, fmt.Errorf("Unsupported way to get config map")
 		}
 
 	}
 
-	return AppMeta{}, fmt.Errorf("Unsupported way to get config map")
+	return Meta{}, fmt.Errorf("Unsupported way to get config map")
 }
 
 func (a *App) newKapp(kapp v1alpha1.AppDeployKapp, cancelCh chan struct{}) (*ctldep.Kapp, error) {

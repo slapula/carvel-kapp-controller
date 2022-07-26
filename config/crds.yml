@@ -1174,8 +1174,10 @@ spec:
                   finished:
                     type: boolean
                   kapp:
+                    description: KappDeployStatus todo
                     properties:
                       associatedResources:
+                        description: AssociatedResources todo
                         properties:
                           groupKinds:
                             items:
@@ -1670,8 +1672,10 @@ spec:
                   finished:
                     type: boolean
                   kapp:
+                    description: KappDeployStatus todo
                     properties:
                       associatedResources:
+                        description: AssociatedResources todo
                         properties:
                           groupKinds:
                             items:

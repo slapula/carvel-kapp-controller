@@ -131,6 +131,7 @@ func (a *Kapp) Inspect() exec.CmdRunResult {
 	return result
 }
 
+// InternalAppConfigMap todo
 func (a *Kapp) InternalAppConfigMap() (*corev1.ConfigMap, error) {
 	var configMap *corev1.ConfigMap
 
