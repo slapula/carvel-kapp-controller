@@ -24,9 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -205,36 +203,6 @@ func (pi *PackageInstallCR) reconcileAppWithPackage(existingApp *kcv1alpha1.App,
 	return reconcile.Result{}, nil
 }
 
-func (pi *PackageInstallCR) getClusterVersion() (*version.Info, error) {
-	// this logic is duplicated here and in deploy.ProcessOpts: if the serviceAccount name is present, we will be deploying to this cluster
-	if len(pi.model.Spec.ServiceAccountName) > 0 {
-		return pi.coreClient.Discovery().ServerVersion()
-	}
-
-	processedGenericOpts, err := deploy.ProcessOpts(
-		"", // empty service account name is how we signal to use the other cluster creds provided in the CR instead of deploying to this cluster
-		pi.model.Spec.Cluster,
-		deploy.GenericOpts{Name: pi.model.ObjectMeta.Name, Namespace: pi.model.ObjectMeta.Namespace},
-		deploy.NewServiceAccounts(pi.coreClient, pi.log),
-		deploy.NewKubeconfigSecrets(pi.coreClient))
-	if err != nil {
-		return nil, err
-	}
-	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(processedGenericOpts.Kubeconfig.AsYAML()))
-	if err != nil {
-		return nil, err
-	}
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-	vi, err := clientset.Discovery().ServerVersion()
-	if err != nil {
-		return nil, err
-	}
-	return vi, nil
-}
-
 func (pi *PackageInstallCR) clusterVersionConstraints(pkg *datapkgingv1alpha1.Package) error {
 	const kubernetesVersionOverrideAnnotation = "packaging.carvel.dev/ignore-kubernetes-version-selection"
 	_, found := pi.model.Annotations[kubernetesVersionOverrideAnnotation]
@@ -244,7 +212,7 @@ func (pi *PackageInstallCR) clusterVersionConstraints(pkg *datapkgingv1alpha1.Pa
 	}
 
 	if pkg.Spec.KubernetesVersionSelection != nil {
-		vi, err := pi.getClusterVersion()
+		vi, err := deploy.GetClusterVersion(pi.coreClient, pi.model.Spec.ServiceAccountName, pi.model.Spec.Cluster, &pi.model.ObjectMeta, pi.log)
 		if err != nil {
 			return err
 		}

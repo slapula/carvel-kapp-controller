@@ -16,7 +16,9 @@ import (
 	"github.com/vmware-tanzu/carvel-kapp-controller/pkg/satoken"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 type ServiceAccounts struct {
@@ -53,9 +55,39 @@ func (s *ServiceAccounts) Find(genericOpts GenericOpts, saName string) (Processe
 	return pgoForSA, nil
 }
 
-// ProcessOpts takes generic opts and a ServiceAccount Name, and returns a populated kubeconfig that can connect to a cluster.
+func GetClusterVersion(cc kubernetes.Interface, saName string, specCluster *v1alpha1.AppCluster, objMeta *metav1.ObjectMeta, log logr.Logger) (*version.Info, error) {
+	// this logic is duplicated here and in ProcessOpts: if the serviceAccount name is present, we will be deploying to this cluster
+	if len(saName) > 0 {
+		return cc.Discovery().ServerVersion()
+	}
+
+	processedGenericOpts, err := processOpts(
+		saName,
+		specCluster,
+		GenericOpts{Name: objMeta.Name, Namespace: objMeta.Namespace},
+		NewServiceAccounts(cc, log),
+		NewKubeconfigSecrets(cc))
+	if err != nil {
+		return nil, err
+	}
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(processedGenericOpts.Kubeconfig.AsYAML()))
+	if err != nil {
+		return nil, err
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	vi, err := clientset.Discovery().ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+	return vi, nil
+}
+
+// processOpts takes generic opts and a ServiceAccount Name, and returns a populated kubeconfig that can connect to a cluster.
 // if the saName is empty then you'll connect to a cluster via the clusterOpts inside the genericOpts, otherwise you'll use the specified SA.
-func ProcessOpts(saName string, clusterOpts *v1alpha1.AppCluster, genericOpts GenericOpts, serviceAccounts *ServiceAccounts, kubeconfigSecrets *KubeconfigSecrets) (*ProcessedGenericOpts, error) {
+func processOpts(saName string, clusterOpts *v1alpha1.AppCluster, genericOpts GenericOpts, serviceAccounts *ServiceAccounts, kubeconfigSecrets *KubeconfigSecrets) (*ProcessedGenericOpts, error) {
 	var err error
 	var processedGenericOpts ProcessedGenericOpts
 

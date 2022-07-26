@@ -40,7 +40,7 @@ func NewFactory(coreClient kubernetes.Interface,
 func (f Factory) NewKapp(opts v1alpha1.AppDeployKapp, saName string,
 	clusterOpts *v1alpha1.AppCluster, genericOpts GenericOpts, cancelCh chan struct{}) (*Kapp, error) {
 
-	processedGenericOpts, err := ProcessOpts(saName, clusterOpts, genericOpts, f.serviceAccounts, f.kubeconfigSecrets)
+	processedGenericOpts, err := processOpts(saName, clusterOpts, genericOpts, f.serviceAccounts, f.kubeconfigSecrets)
 	if err != nil {
 		return nil, err
 	}
