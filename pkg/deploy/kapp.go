@@ -135,16 +135,19 @@ func (a *Kapp) InternalAppConfigMap() (*corev1.ConfigMap, error) {
 	var configMap *corev1.ConfigMap
 
 	metadataFile, err := ioutil.ReadFile(fmt.Sprintf("/etc/kappctrl-mem-tmp/metadata-%s", a.genericOpts.Name))
-	if os.IsNotExist(err) {
+	switch {
+	case os.IsNotExist(err) && a.maps != nil:
 		configMap, err = a.maps.Get(context.TODO(), a.genericOpts.Name+a.appSuffix, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
-	} else {
+	case err == nil:
 		configMap = &corev1.ConfigMap{Data: map[string]string{"spec": string(metadataFile)}}
 		if err != nil {
 			return nil, err
 		}
+	default:
+		return nil, err
 	}
 
 	return configMap, nil
