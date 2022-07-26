@@ -49,10 +49,10 @@ type PackageInstallCR struct {
 }
 
 func NewPackageInstallCR(model *pkgingv1alpha1.PackageInstall, log logr.Logger,
-	kcclient kcclient.Interface, pkgclient pkgclient.Interface, coreClient kubernetes.Interface) *PackageInstallCR {
+	kcclient kcclient.Interface, pkgclient pkgclient.Interface, coreClient kubernetes.Interface, controllerVersion string) *PackageInstallCR {
 
 	return &PackageInstallCR{model: model, unmodifiedModel: model.DeepCopy(), log: log,
-		kcclient: kcclient, pkgclient: pkgclient, coreClient: coreClient}
+		kcclient: kcclient, pkgclient: pkgclient, coreClient: coreClient, controllerVersion: controllerVersion}
 }
 
 func (pi *PackageInstallCR) Reconcile() (reconcile.Result, error) {
@@ -241,7 +241,7 @@ func (pi *PackageInstallCR) kcVersionConstraints(pkg *datapkgingv1alpha1.Package
 	}
 
 	if pkg.Spec.KappControllerVersionSelection != nil {
-		semverVersions := versions.NewRelaxedSemversNoErr([]string{ControllerVersion})
+		semverVersions := versions.NewRelaxedSemversNoErr([]string{pi.controllerVersion})
 		matchedVers, err := semverVersions.FilterConstraints(pkg.Spec.KappControllerVersionSelection.Constraints)
 		if err != nil {
 			return err
@@ -249,7 +249,7 @@ func (pi *PackageInstallCR) kcVersionConstraints(pkg *datapkgingv1alpha1.Package
 
 		if matchedVers.Len() == 0 {
 			return fmt.Errorf("Cluster is running kapp-controller %s but package constrained versions to: %s",
-				ControllerVersion, pkg.Spec.KappControllerVersionSelection.Constraints)
+				pi.controllerVersion, pkg.Spec.KappControllerVersionSelection.Constraints)
 		}
 	}
 

@@ -200,7 +200,7 @@ func Test_PlaceHolderSecretCreated_WhenPackageHasNoSecretRef(t *testing.T) {
 	log := logf.Log.WithName("kc")
 	fakekctrl := fakekappctrl.NewSimpleClientset(model)
 	fakek8s := fake.NewSimpleClientset()
-	ip := NewPackageInstallCR(model, log, fakekctrl, fakePkgClient, fakek8s)
+	ip := NewPackageInstallCR(model, log, fakekctrl, fakePkgClient, fakek8s, "0.42.31337")
 
 	_, err := ip.Reconcile()
 	assert.Nil(t, err)
@@ -272,7 +272,7 @@ func Test_PlaceHolderSecretsCreated_WhenPackageHasMultipleFetchStages(t *testing
 	log := logf.Log.WithName("kc")
 	fakekctrl := fakekappctrl.NewSimpleClientset(model)
 	fakek8s := fake.NewSimpleClientset()
-	ip := NewPackageInstallCR(model, log, fakekctrl, fakePkgClient, fakek8s)
+	ip := NewPackageInstallCR(model, log, fakekctrl, fakePkgClient, fakek8s, "0.42.31337")
 
 	_, err := ip.Reconcile()
 	assert.Nil(t, err)
@@ -354,7 +354,7 @@ func Test_PlaceHolderSecretsNotCreated_WhenFetchStagesHaveSecrets(t *testing.T) 
 	log := logf.Log.WithName("kc")
 	fakekctrl := fakekappctrl.NewSimpleClientset(model)
 	fakek8s := fake.NewSimpleClientset()
-	ip := NewPackageInstallCR(model, log, fakekctrl, fakePkgClient, fakek8s)
+	ip := NewPackageInstallCR(model, log, fakekctrl, fakePkgClient, fakek8s, "0.42.31337")
 
 	_, err := ip.Reconcile()
 	assert.Nil(t, err)
@@ -430,7 +430,7 @@ func Test_PlaceHolderSecretCreated_WhenPackageInstallUpdated(t *testing.T) {
 
 	fakekctrl := fakekappctrl.NewSimpleClientset(model, existingApp)
 	fakek8s := fake.NewSimpleClientset()
-	ip := NewPackageInstallCR(model, log, fakekctrl, fakePkgClient, fakek8s)
+	ip := NewPackageInstallCR(model, log, fakekctrl, fakePkgClient, fakek8s, "0.42.31337")
 
 	_, err := ip.Reconcile()
 	assert.Nil(t, err)

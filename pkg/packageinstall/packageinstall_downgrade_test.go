@@ -88,7 +88,7 @@ func Test_PackageInstallVersionDowngrades(t *testing.T) {
 		appClient := fakekappctrl.NewSimpleClientset(pkgInstall, existingApp)
 		coreClient := fake.NewSimpleClientset()
 
-		ip := NewPackageInstallCR(pkgInstall, log, appClient, pkgClient, coreClient)
+		ip := NewPackageInstallCR(pkgInstall, log, appClient, pkgClient, coreClient, "0.42.31337")
 		_, err := ip.Reconcile()
 		assert.Nil(t, err)
 
@@ -130,7 +130,7 @@ func Test_PackageInstallVersionDowngrades(t *testing.T) {
 		appClient := fakekappctrl.NewSimpleClientset(pkgInstall, existingApp)
 		coreClient := fake.NewSimpleClientset()
 
-		ip := NewPackageInstallCR(pkgInstall, log, appClient, pkgClient, coreClient)
+		ip := NewPackageInstallCR(pkgInstall, log, appClient, pkgClient, coreClient, "0.42.31337")
 		_, err := ip.Reconcile()
 		assert.Nil(t, err)
 
@@ -172,7 +172,7 @@ func Test_PackageInstallVersionDowngrades(t *testing.T) {
 		appClient := fakekappctrl.NewSimpleClientset(pkgInstall, existingApp)
 		coreClient := fake.NewSimpleClientset()
 
-		ip := NewPackageInstallCR(pkgInstall, log, appClient, pkgClient, coreClient)
+		ip := NewPackageInstallCR(pkgInstall, log, appClient, pkgClient, coreClient, "0.42.31337")
 		_, err := ip.Reconcile()
 		assert.Nil(t, err)
 
@@ -220,7 +220,7 @@ func Test_PackageInstallVersionDowngrades(t *testing.T) {
 		appClient := fakekappctrl.NewSimpleClientset(pkgInstall, existingApp)
 		coreClient := fake.NewSimpleClientset()
 
-		ip := NewPackageInstallCR(pkgInstall, log, appClient, pkgClient, coreClient)
+		ip := NewPackageInstallCR(pkgInstall, log, appClient, pkgClient, coreClient, "0.42.31337")
 		_, err := ip.Reconcile()
 		assert.Nil(t, err)
 
