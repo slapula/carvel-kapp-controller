@@ -204,14 +204,14 @@ func (pi *PackageInstallCR) reconcileAppWithPackage(existingApp *kcv1alpha1.App,
 }
 
 func (pi *PackageInstallCR) clusterVersionConstraints(pkg *datapkgingv1alpha1.Package) error {
-	const kubernetesVersionOverrideAnnotation = "packaging.carvel.dev/ignore-kubernetes-version-selection"
-	_, found := pi.model.Annotations[kubernetesVersionOverrideAnnotation]
-	if found {
-		pi.log.Info("Found k8s Version override annotation; not applying version constraints")
-		return nil
-	}
-
 	if pkg.Spec.KubernetesVersionSelection != nil {
+		const kubernetesVersionOverrideAnnotation = "packaging.carvel.dev/ignore-kubernetes-version-selection"
+		_, found := pi.model.Annotations[kubernetesVersionOverrideAnnotation]
+		if found {
+			pi.log.Info("Found k8s version override annotation; not applying version constraints")
+			return nil
+		}
+
 		vi, err := deploy.GetClusterVersion(pi.coreClient, pi.model.Spec.ServiceAccountName, pi.model.Spec.Cluster, &pi.model.ObjectMeta, pi.log)
 		if err != nil {
 			return err
@@ -233,14 +233,14 @@ func (pi *PackageInstallCR) clusterVersionConstraints(pkg *datapkgingv1alpha1.Pa
 }
 
 func (pi *PackageInstallCR) kcVersionConstraints(pkg *datapkgingv1alpha1.Package) error {
-	const kappControllerVersionOverrideAnnotation = "packaging.carvel.dev/ignore-kapp-controller-version-selection"
-	_, found := pi.model.Annotations[kappControllerVersionOverrideAnnotation]
-	if found {
-		pi.log.Info("Found kapp-controller Version override annotation; not applying version constraints")
-		return nil
-	}
-
 	if pkg.Spec.KappControllerVersionSelection != nil {
+		const kappControllerVersionOverrideAnnotation = "packaging.carvel.dev/ignore-kapp-controller-version-selection"
+		_, found := pi.model.Annotations[kappControllerVersionOverrideAnnotation]
+		if found {
+			pi.log.Info("Found kapp-controller Version override annotation; not applying version constraints")
+			return nil
+		}
+
 		semverVersions := versions.NewRelaxedSemversNoErr([]string{pi.controllerVersion})
 		matchedVers, err := semverVersions.FilterConstraints(pkg.Spec.KappControllerVersionSelection.Constraints)
 		if err != nil {
@@ -254,15 +254,6 @@ func (pi *PackageInstallCR) kcVersionConstraints(pkg *datapkgingv1alpha1.Package
 	}
 
 	return nil
-}
-
-func (pi *PackageInstallCR) passesAdditionalConstraints(pkg *datapkgingv1alpha1.Package) error {
-	err := pi.clusterVersionConstraints(pkg)
-	if err != nil {
-		return err
-	}
-
-	return pi.kcVersionConstraints(pkg)
 }
 
 func (pi *PackageInstallCR) referencedPkgVersion() (datapkgingv1alpha1.Package, error) {
@@ -287,16 +278,10 @@ func (pi *PackageInstallCR) referencedPkgVersion() (datapkgingv1alpha1.Package, 
 	var versionStrs []string
 	versionToPkg := map[string]datapkgingv1alpha1.Package{}
 
-	rejectPkgReasons := []string{}
 	for _, pkg := range pkgList.Items {
 		if pkg.Spec.RefName == pi.model.Spec.PackageRef.RefName {
-			err = pi.passesAdditionalConstraints(&pkg)
-			if err == nil {
-				versionStrs = append(versionStrs, pkg.Spec.Version)
-				versionToPkg[pkg.Spec.Version] = pkg
-			} else {
-				rejectPkgReasons = append(rejectPkgReasons, err.Error())
-			}
+			versionStrs = append(versionStrs, pkg.Spec.Version)
+			versionToPkg[pkg.Spec.Version] = pkg
 		}
 	}
 
@@ -312,12 +297,21 @@ func (pi *PackageInstallCR) referencedPkgVersion() (datapkgingv1alpha1.Package, 
 
 	verConfig := verv1alpha1.VersionSelection{Semver: semverConfig}
 
-	selectedVersion, err := versions.HighestConstrainedVersion(versionStrs, verConfig)
+	kcConstraint := func(pkgVer string) bool {
+		pkg := versionToPkg[pkgVer]
+		return pi.kcVersionConstraints(&pkg) == nil
+	}
+	k8sConstraint := func(pkgVer string) bool {
+		pkg := versionToPkg[pkgVer]
+		return pi.clusterVersionConstraints(&pkg) == nil
+	}
+
+	vcc := []versions.ConstraintCallback{versions.ConstraintCallback{Constraint: k8sConstraint, Name: "kubernetes-version-check"},
+		versions.ConstraintCallback{Constraint: kcConstraint, Name: "kapp-controller-version-check"},
+	}
+	selectedVersion, err := versions.HighestConstrainedVersionWithAdditionalConstraints(versionStrs, verConfig, vcc)
 	if err != nil {
-		retErr := fmt.Errorf(
-			"Pre-Filter: Number of Packages excluded due to k8s or kc constraints: %d. (details: %v)\nPost-Exclusion Package Version Selection: %v",
-			len(rejectPkgReasons), rejectPkgReasons, err.Error())
-		return datapkgingv1alpha1.Package{}, retErr
+		return datapkgingv1alpha1.Package{}, err
 	}
 
 	if pkg, found := versionToPkg[selectedVersion]; found {
