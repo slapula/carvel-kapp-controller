@@ -6,7 +6,6 @@ package packageinstall
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/go-logr/logr"
 	"github.com/vmware-tanzu/carvel-kapp-controller/pkg/apis/kappctrl/v1alpha1"
@@ -204,15 +203,6 @@ func (pi *PackageInstallCR) reconcileAppWithPackage(existingApp *kcv1alpha1.App,
 	}
 
 	return reconcile.Result{}, nil
-}
-
-func getPodsK8sURL() (string, error) {
-	host := os.Getenv("KUBERNETES_SERVICE_HOST")
-	port := os.Getenv("KUBERNETES_SERVICE_PORT")
-	if host == "" || port == "" {
-		return "", fmt.Errorf("Unable to read KUBERNETES_SERVICE_HOST/PORT environment vars.")
-	}
-	return fmt.Sprintf("%s:%s", host, port), nil
 }
 
 func (pi *PackageInstallCR) getClusterVersion() (*version.Info, error) {

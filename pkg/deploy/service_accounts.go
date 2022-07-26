@@ -53,6 +53,8 @@ func (s *ServiceAccounts) Find(genericOpts GenericOpts, saName string) (Processe
 	return pgoForSA, nil
 }
 
+// ProcessOpts takes generic opts and a ServiceAccount Name, and returns a populated kubeconfig that can connect to a cluster.
+// if the saName is empty then you'll connect to a cluster via the clusterOpts inside the genericOpts, otherwise you'll use the specified SA.
 func ProcessOpts(saName string, clusterOpts *v1alpha1.AppCluster, genericOpts GenericOpts, serviceAccounts *ServiceAccounts, kubeconfigSecrets *KubeconfigSecrets) (*ProcessedGenericOpts, error) {
 	var err error
 	var processedGenericOpts ProcessedGenericOpts
