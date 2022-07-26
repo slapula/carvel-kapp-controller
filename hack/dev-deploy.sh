@@ -4,8 +4,6 @@ set -ex
 
 source $(dirname "$0")/version-util.sh
 
-#ytt -f config/ -f config-release -v kapp_controller_version=" --data-values-env=KCTRL | kbld -f- > ./tmp/release.yml
-
 rm -rf tmp/build
 mkdir -p tmp/build
 CGO_ENABLED=0 GOOS=linux go build -mod=vendor -ldflags="-X 'main.Version=$(get_kappctrl_ver)+develop'" -trimpath -o tmp/build ./cmd/...
