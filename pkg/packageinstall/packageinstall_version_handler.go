@@ -105,6 +105,7 @@ func (ipvh *PackageInstallVersionHandler) isEligibleForVersionUpgrade(version st
 
 	semverConfig := installedPkg.Spec.PackageRef.VersionSelection
 
+	// TODO: we should  make this apply the same kc and k8s constraints as the other one to avoid unnecessary reconciles
 	selectedVersion, err := versions.HighestConstrainedVersion([]string{version}, verv1alpha1.VersionSelection{Semver: semverConfig})
 	if selectedVersion == "" || err != nil {
 		return false
