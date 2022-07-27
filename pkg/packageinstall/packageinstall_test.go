@@ -18,6 +18,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/version"
+	fakediscovery "k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/kubernetes/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -68,6 +70,95 @@ func Test_PackageRefWithPrerelease_IsFound(t *testing.T) {
 	if !reflect.DeepEqual(out, expectedPackageVersion) {
 		t.Fatalf("\nPackageVersion is not same:\nExpected:\n%#v\nGot:\n%#v\n", expectedPackageVersion, out)
 	}
+}
+
+func Test_PackageWithConstraints(t *testing.T) {
+	const (
+		kubernetesVersionOverrideAnnotation     = "packaging.carvel.dev/ignore-kubernetes-version-selection"
+		kappControllerVersionOverrideAnnotation = "packaging.carvel.dev/ignore-kapp-controller-version-selection"
+	)
+
+	log := logf.Log.WithName("kc")
+	fakek8s := fake.NewSimpleClientset()
+
+	pkg := datapkgingv1alpha1.Package{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pkg.test.carvel.dev",
+		},
+		Spec: datapkgingv1alpha1.PackageSpec{
+			RefName: "pkg.test.carvel.dev",
+			Version: "0.0.0",
+			KappControllerVersionSelection: &versions.VersionSelectionSemver{
+				Constraints: ">1.0.0 <2.0.0",
+			},
+			KubernetesVersionSelection: &versions.VersionSelectionSemver{
+				Constraints: ">0.15.0",
+			},
+		},
+	}
+
+	fakePkgClient := fakeapiserver.NewSimpleClientset(&pkg)
+
+	// mock the kubernetes server version
+	fakeDiscovery, _ := fakek8s.Discovery().(*fakediscovery.FakeDiscovery)
+	fakeDiscovery.FakedServerVersion = &version.Info{
+		GitVersion: "v0.20.0",
+	}
+
+	ip := PackageInstallCR{
+		model: &pkgingv1alpha1.PackageInstall{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "instl-pkg-ignore-kc-constraint",
+			},
+			Spec: pkgingv1alpha1.PackageInstallSpec{
+				PackageRef: &pkgingv1alpha1.PackageRef{
+					RefName: "pkg.test.carvel.dev",
+					VersionSelection: &versions.VersionSelectionSemver{
+						Constraints: "0.0.0",
+					},
+				},
+				ServiceAccountName: "use-local-cluster-sa", // saname being present indicates use local cluster version
+			},
+		},
+		pkgclient:         fakePkgClient,
+		controllerVersion: "1.5.0",
+		log:               log,
+		coreClient:        fakek8s,
+	}
+
+	// all constraints met
+	_, err := ip.referencedPkgVersion()
+	require.NoError(t, err)
+
+	// kapp-controller version constraint fail
+	ip.controllerVersion = "3.0.0"
+	_, err = ip.referencedPkgVersion()
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "after-kubernetes-version-check=1")
+	assert.ErrorContains(t, err, "after-kapp-controller-version-check=0")
+
+	// kapp-controller version override annotation
+	ip.model.ObjectMeta.Annotations = map[string]string{
+		kappControllerVersionOverrideAnnotation: "",
+	}
+	_, err = ip.referencedPkgVersion()
+	require.NoError(t, err)
+
+	// kubernetes version constraint fail
+	fakeDiscovery.FakedServerVersion = &version.Info{
+		GitVersion: "v0.0.0",
+	}
+	_, err = ip.referencedPkgVersion()
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "after-kubernetes-version-check=0")
+
+	// kubernetes version override annotation
+	ip.model.ObjectMeta.Annotations = map[string]string{
+		kappControllerVersionOverrideAnnotation: "",
+		kubernetesVersionOverrideAnnotation:     "",
+	}
+	_, err = ip.referencedPkgVersion()
+	require.NoError(t, err)
 }
 
 func Test_PackageRefWithPrerelease_DoesNotRequirePrereleaseMarker(t *testing.T) {
