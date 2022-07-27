@@ -203,57 +203,56 @@ func (pi *PackageInstallCR) reconcileAppWithPackage(existingApp *kcv1alpha1.App,
 	return reconcile.Result{}, nil
 }
 
-func (pi *PackageInstallCR) clusterVersionConstraints(pkg *datapkgingv1alpha1.Package) error {
+func (pi *PackageInstallCR) clusterVersionConstraintsSatisfied(pkg *datapkgingv1alpha1.Package) bool {
 	if pkg.Spec.KubernetesVersionSelection != nil {
 		const kubernetesVersionOverrideAnnotation = "packaging.carvel.dev/ignore-kubernetes-version-selection"
 		_, found := pi.model.Annotations[kubernetesVersionOverrideAnnotation]
 		if found {
 			pi.log.Info("Found k8s version override annotation; not applying version constraints")
-			return nil
+			return true
 		}
 
 		vi, err := deploy.GetClusterVersion(pi.coreClient, pi.model.Spec.ServiceAccountName, pi.model.Spec.Cluster, &pi.model.ObjectMeta, pi.log)
 		if err != nil {
-			return err
+			return false
 		}
 
 		semverVersions := versions.NewRelaxedSemversNoErr([]string{vi.GitVersion})
 		matchedVers, err := semverVersions.FilterConstraints(pkg.Spec.KubernetesVersionSelection.Constraints)
 		if err != nil {
-			return err
+			return false
 		}
 
 		if matchedVers.Len() == 0 {
-			return fmt.Errorf("Cluster is running kubernetes %s but package constrained versions to: %s",
-				vi.GitVersion, pkg.Spec.KubernetesVersionSelection.Constraints)
+			return false
 		}
 	}
 
-	return nil
+	return true
 }
 
-func (pi *PackageInstallCR) kcVersionConstraints(pkg *datapkgingv1alpha1.Package) error {
+func (pi *PackageInstallCR) kcVersionConstraintsSatisfied(pkg *datapkgingv1alpha1.Package) bool {
 	if pkg.Spec.KappControllerVersionSelection != nil {
 		const kappControllerVersionOverrideAnnotation = "packaging.carvel.dev/ignore-kapp-controller-version-selection"
 		_, found := pi.model.Annotations[kappControllerVersionOverrideAnnotation]
 		if found {
 			pi.log.Info("Found kapp-controller Version override annotation; not applying version constraints")
-			return nil
+			return false
 		}
 
+		// TODO: in order to allow pre-releases we have to switch to using Highest... instead of calling Filter for ourselves
 		semverVersions := versions.NewRelaxedSemversNoErr([]string{pi.controllerVersion})
 		matchedVers, err := semverVersions.FilterConstraints(pkg.Spec.KappControllerVersionSelection.Constraints)
 		if err != nil {
-			return err
+			return false
 		}
 
 		if matchedVers.Len() == 0 {
-			return fmt.Errorf("Cluster is running kapp-controller %s but package constrained versions to: %s",
-				pi.controllerVersion, pkg.Spec.KappControllerVersionSelection.Constraints)
+			return false
 		}
 	}
 
-	return nil
+	return true
 }
 
 func (pi *PackageInstallCR) referencedPkgVersion() (datapkgingv1alpha1.Package, error) {
@@ -299,11 +298,11 @@ func (pi *PackageInstallCR) referencedPkgVersion() (datapkgingv1alpha1.Package, 
 
 	kcConstraint := func(pkgVer string) bool {
 		pkg := versionToPkg[pkgVer]
-		return pi.kcVersionConstraints(&pkg) == nil
+		return pi.kcVersionConstraintsSatisfied(&pkg)
 	}
 	k8sConstraint := func(pkgVer string) bool {
 		pkg := versionToPkg[pkgVer]
-		return pi.clusterVersionConstraints(&pkg) == nil
+		return pi.clusterVersionConstraintsSatisfied(&pkg)
 	}
 
 	vcc := []versions.ConstraintCallback{versions.ConstraintCallback{Constraint: k8sConstraint, Name: "kubernetes-version-check"},
