@@ -71,18 +71,22 @@ func GetClusterVersion(cc kubernetes.Interface, saName string, specCluster *v1al
 	if err != nil {
 		return nil, err
 	}
+
 	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(processedGenericOpts.Kubeconfig.AsYAML()))
 	if err != nil {
 		return nil, err
 	}
+
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, err
 	}
+
 	vi, err := clientset.Discovery().ServerVersion()
 	if err != nil {
 		return nil, err
 	}
+
 	return vi, nil
 }
 

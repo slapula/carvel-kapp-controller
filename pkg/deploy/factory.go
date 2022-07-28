@@ -36,7 +36,7 @@ func NewFactory(coreClient kubernetes.Interface,
 		NewKubeconfigSecrets(coreClient), NewServiceAccounts(coreClient, log), cmdRunner}
 }
 
-// NewKapp configures kapp, which it gives you.
+// NewKapp configures and returns a deployer of type Kapp
 func (f Factory) NewKapp(opts v1alpha1.AppDeployKapp, saName string,
 	clusterOpts *v1alpha1.AppCluster, genericOpts GenericOpts, cancelCh chan struct{}) (*Kapp, error) {
 

@@ -331,45 +331,6 @@ func Test_PackageInstalled_FromPackageInstall_VersionConstraints(t *testing.T) {
 	})
 }
 
-func TestPackageInstall_NoPackages_DisplaysUsefulErrorMessage(t *testing.T) {
-	env := e2e.BuildEnv(t)
-	logger := e2e.Logger{}
-	kapp := e2e.Kapp{t, env.Namespace, logger}
-	sas := e2e.ServiceAccounts{env.Namespace}
-	name := "pkgi-with-no-pkg"
-
-	cleanUp := func() {
-		kapp.Run([]string{"delete", "-a", name})
-	}
-	cleanUp()
-	defer cleanUp()
-
-	pkgi := fmt.Sprintf(`
----
-apiVersion: packaging.carvel.dev/v1alpha1
-kind: PackageInstall
-metadata:
-  name: %s
-  annotations:
-    kapp.k14s.io/change-group: kappctrl-e2e.k14s.io/packageinstalls
-spec:
-  serviceAccountName: kappctrl-e2e-ns-sa
-  packageRef:
-    refName: pkg.notexists.carvel.dream
-    versionSelection:
-      constraints: 1.0.0
-`, name) + sas.ForNamespaceYAML()
-
-	logger.Section("PackageInstall fails due to no package existing", func() {
-		out, err := kapp.RunWithOpts([]string{"deploy", "-a", name, "-f", "-"},
-			e2e.RunOpts{
-				StdinReader: strings.NewReader(pkgi),
-				AllowError:  true})
-		assert.Contains(t, out, "Package pkg.notexists.carvel.dream not found")
-		require.Error(t, err)
-	})
-}
-
 func Test_PackageInstallStatus_DisplaysUsefulErrorMessage_ForDeploymentFailure(t *testing.T) {
 	env := e2e.BuildEnv(t)
 	logger := e2e.Logger{}
