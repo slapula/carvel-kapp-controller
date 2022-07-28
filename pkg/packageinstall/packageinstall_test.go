@@ -80,23 +80,7 @@ func Test_PackageWithConstraints(t *testing.T) {
 
 	log := logf.Log.WithName("kc")
 	fakek8s := fake.NewSimpleClientset()
-
-	pkg := datapkgingv1alpha1.Package{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "pkg.test.carvel.dev",
-		},
-		Spec: datapkgingv1alpha1.PackageSpec{
-			RefName: "pkg.test.carvel.dev",
-			Version: "0.0.0",
-			KappControllerVersionSelection: &versions.VersionSelectionSemver{
-				Constraints: ">1.0.0 <2.0.0",
-			},
-			KubernetesVersionSelection: &versions.VersionSelectionSemver{
-				Constraints: ">0.15.0",
-			},
-		},
-	}
-
+	pkg := generatePackageWithConstraints("pkg.test.carvel.dev", "0.0.0", ">1.0.0 <2.0.0", ">0.15.0")
 	fakePkgClient := fakeapiserver.NewSimpleClientset(&pkg)
 
 	// mock the kubernetes server version
@@ -158,6 +142,47 @@ func Test_PackageWithConstraints(t *testing.T) {
 		kubernetesVersionOverrideAnnotation:     "",
 	}
 	_, err = ip.referencedPkgVersion()
+	require.NoError(t, err)
+}
+
+func Test_PackageWithConstraints_HighestMatch(t *testing.T) {
+	log := logf.Log.WithName("kc")
+	fakek8s := fake.NewSimpleClientset()
+	pkgName := "pkg.test.carvel.dev"
+	pkg1 := generatePackageWithConstraints(pkgName, "0.4.0", ">0.1.0", ">0.1.0") // this one is the lowest version but installable
+	pkg2 := generatePackageWithConstraints(pkgName, "0.5.0", ">0.1.0", ">0.1.0") // this one is the highest installable version
+	pkg3 := generatePackageWithConstraints(pkgName, "1.4.1", ">2.0.0", "")       // higher version uninstallable
+	fakePkgClient := fakeapiserver.NewSimpleClientset(&pkg1, &pkg2, &pkg3)
+
+	// mock the kubernetes server version
+	fakeDiscovery, _ := fakek8s.Discovery().(*fakediscovery.FakeDiscovery)
+	fakeDiscovery.FakedServerVersion = &version.Info{
+		GitVersion: "v0.20.0",
+	}
+
+	ip := PackageInstallCR{
+		model: &pkgingv1alpha1.PackageInstall{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "instl-pkg-multi-version-constraints",
+			},
+			Spec: pkgingv1alpha1.PackageInstallSpec{
+				PackageRef: &pkgingv1alpha1.PackageRef{
+					RefName: pkgName,
+					VersionSelection: &versions.VersionSelectionSemver{
+						Constraints: ">0.0.0",
+					},
+				},
+				ServiceAccountName: "use-local-cluster-sa", // saname being present indicates use local cluster version
+			},
+		},
+		pkgclient:         fakePkgClient,
+		controllerVersion: "1.5.0",
+		log:               log,
+		coreClient:        fakek8s,
+	}
+
+	out, err := ip.referencedPkgVersion()
+	assert.Equal(t, out, pkg2, "Highest version of Package meeting constraints not chosen: \nExpected:\n%#v\nGot:\n%#v\n", pkg2, out)
 	require.NoError(t, err)
 }
 
@@ -544,4 +569,22 @@ func Test_PlaceHolderSecretCreated_WhenPackageInstallUpdated(t *testing.T) {
 	assert.NotNil(t, app.Spec.Fetch[0].ImgpkgBundle.SecretRef, "expected ImgpkgBundle secretRef to be non nil but was nil")
 
 	assert.Equal(t, "instl-pkg-fetch-0", app.Spec.Fetch[0].ImgpkgBundle.SecretRef.Name)
+}
+
+func generatePackageWithConstraints(name, version, kcConstraint, k8sContraint string) datapkgingv1alpha1.Package {
+	return datapkgingv1alpha1.Package{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name + "." + version,
+		},
+		Spec: datapkgingv1alpha1.PackageSpec{
+			RefName: name,
+			Version: version,
+			KappControllerVersionSelection: &versions.VersionSelectionSemver{
+				Constraints: kcConstraint,
+			},
+			KubernetesVersionSelection: &versions.VersionSelectionSemver{
+				Constraints: k8sContraint,
+			},
+		},
+	}
 }

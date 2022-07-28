@@ -331,37 +331,6 @@ func Test_PackageInstalled_FromPackageInstall_VersionConstraints(t *testing.T) {
 	})
 }
 
-func Test_PackageInstall_MultiPkgMultiConstraint(t *testing.T) {
-	env := e2e.BuildEnv(t)
-	logger := e2e.Logger{}
-	kapp := e2e.Kapp{t, env.Namespace, logger}
-	kubectl := e2e.Kubectl{t, env.Namespace, logger}
-	sas := e2e.ServiceAccounts{env.Namespace}
-	name := "instl-pkg-multi-version-constraints"
-
-	cleanUp := func() {
-		kapp.Run([]string{"delete", "-a", name})
-	}
-	cleanUp()
-	defer cleanUp()
-
-	yamlsToInstall := generatePkgYAML(">0.1.0", ">0.1.0", "0.4.0")     // this one is the lowest version but installable
-	yamlsToInstall += generatePkgYAML(">0.1.0", ">0.1.0", "0.5.0")     // this one is the highest installable version
-	yamlsToInstall += generatePkgYAML(">2.0.0", "", "1.4.1")           // higher version uninstallable
-	yamlsToInstall += generatePkgiYAML(name, "", ">5.0.0", []string{}) // version is fixed to 1.0.0 uninstallable and pkgi+secret
-	yamlsToInstall += sas.ForNamespaceYAML()
-
-	logger.Section("PackageInstall selects the highest version that matches all the constraints", func() {
-		kapp.RunWithOpts([]string{"deploy", "-a", name, "-f", "-"},
-			e2e.RunOpts{StdinReader: strings.NewReader(yamlsToInstall)})
-
-		out := kubectl.Run([]string{"get", "pkgi", "-A", "-oyaml"})
-		assert.Contains(t, out, "type: ReconcileSucceeded")
-		assert.Contains(t, out, "version: 0.5.0")
-	})
-
-}
-
 func TestPackageInstall_NoPackages_DisplaysUsefulErrorMessage(t *testing.T) {
 	env := e2e.BuildEnv(t)
 	logger := e2e.Logger{}
