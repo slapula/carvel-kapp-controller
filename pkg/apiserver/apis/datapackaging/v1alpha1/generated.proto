@@ -117,7 +117,6 @@ message PackageSpec {
   // +optional
   repeated IncludedSoftware includedSoftware = 9;
 
-  // TODO: if we do it this way , the "versions.VersionSelectionSemver" will include pre-releases, and also we should check whether it works with vendor-speicific k8s versions
   // KappControllerVersionSelection specifies the versions of kapp-controller which can install this package
   // +optional
   optional github.com.vmware_tanzu.carvel_vendir.pkg.vendir.versions.v1alpha1.VersionSelectionSemver kappControllerVersionSelection = 10;
