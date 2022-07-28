@@ -3,4 +3,6 @@
 
 package version
 
-var Version = "0.0.0+develop"
+const (
+	Version = "0.24.0"
+)

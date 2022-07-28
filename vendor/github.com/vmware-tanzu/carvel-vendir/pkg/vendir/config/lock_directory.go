@@ -49,7 +49,6 @@ type LockDirectoryContentsImgpkgBundle struct {
 
 type LockDirectoryContentsGithubRelease struct {
 	URL string `json:"url"`
-	Tag string `json:"tag,omitempty"`
 }
 
 type LockDirectoryContentsHelmChart struct {
