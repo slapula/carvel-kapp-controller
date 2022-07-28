@@ -218,9 +218,8 @@ func (pi *PackageInstallCR) clusterVersionConstraintsSatisfied(pkg *datapkgingv1
 			return false
 		}
 
-		semverVersions := versions.NewRelaxedSemversNoErr([]string{vi.GitVersion})
-		matchedVers, err := semverVersions.FilterConstraints(pkg.Spec.KubernetesVersionSelection.Constraints)
-		if err != nil || matchedVers.Len() == 0 {
+		match, err := versions.HighestConstrainedVersion([]string{vi.GitVersion}, verv1alpha1.VersionSelection{Semver: pkg.Spec.KubernetesVersionSelection})
+		if err != nil || match == "" {
 			return false
 		}
 	}
@@ -238,10 +237,8 @@ func (pi *PackageInstallCR) kcVersionConstraintsSatisfied(pkg *datapkgingv1alpha
 			return true
 		}
 
-		// TODO: in order to allow pre-releases we have to switch to using Highest... instead of calling Filter for ourselves
-		semverVersions := versions.NewRelaxedSemversNoErr([]string{pi.controllerVersion})
-		matchedVers, err := semverVersions.FilterConstraints(pkg.Spec.KappControllerVersionSelection.Constraints)
-		if err != nil || matchedVers.Len() == 0 {
+		match, err := versions.HighestConstrainedVersion([]string{pi.controllerVersion}, verv1alpha1.VersionSelection{Semver: pkg.Spec.KappControllerVersionSelection})
+		if err != nil || match == "" {
 			return false
 		}
 	}

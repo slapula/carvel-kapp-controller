@@ -80,7 +80,7 @@ func Test_PackageWithConstraints(t *testing.T) {
 
 	log := logf.Log.WithName("kc")
 	fakek8s := fake.NewSimpleClientset()
-	pkg := generatePackageWithConstraints("pkg.test.carvel.dev", "0.0.0", ">1.0.0 <2.0.0", ">0.15.0")
+	pkg := generatePackageWithConstraints("pkg.test.carvel.dev", "0.0.0", ">1.0.0 <2.0.0", []string{}, ">0.15.0", []string{})
 	fakePkgClient := fakeapiserver.NewSimpleClientset(&pkg)
 
 	// mock the kubernetes server version
@@ -145,13 +145,53 @@ func Test_PackageWithConstraints(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func Test_PackageWithConstraintsWithPrerelease(t *testing.T) {
+	log := logf.Log.WithName("kc")
+	fakek8s := fake.NewSimpleClientset()
+	pkg := generatePackageWithConstraints("pkg.test.carvel.dev", "0.0.0", ">1.0.0 <2.0.0", []string{}, "0.10.0", []string{})
+	pkg1 := generatePackageWithConstraints("pkg.test.carvel.dev", "1.0.0", ">1.0.0 <2.0.0", []string{}, "0.20.0-gke.100", []string{"gke"})
+	pkg2 := generatePackageWithConstraints("pkg.test.carvel.dev", "2.0.0", ">1.0.0 <2.0.0", []string{}, "0.20.0", []string{})
+	fakePkgClient := fakeapiserver.NewSimpleClientset(&pkg, &pkg1, &pkg2)
+
+	// mock the kubernetes server version
+	fakeDiscovery, _ := fakek8s.Discovery().(*fakediscovery.FakeDiscovery)
+	fakeDiscovery.FakedServerVersion = &version.Info{
+		GitVersion: "v0.20.0-gke.100",
+	}
+
+	ip := PackageInstallCR{
+		model: &pkgingv1alpha1.PackageInstall{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "instl-pkg-ignore-kc-constraint",
+			},
+			Spec: pkgingv1alpha1.PackageInstallSpec{
+				PackageRef: &pkgingv1alpha1.PackageRef{
+					RefName: "pkg.test.carvel.dev",
+					VersionSelection: &versions.VersionSelectionSemver{
+						Constraints: ">0.0.0",
+					},
+				},
+				ServiceAccountName: "use-local-cluster-sa", // saname being present indicates use local cluster version
+			},
+		},
+		pkgclient:         fakePkgClient,
+		controllerVersion: "1.5.0",
+		log:               log,
+		coreClient:        fakek8s,
+	}
+
+	out, err := ip.referencedPkgVersion()
+	assert.Equal(t, out, pkg1, "Pre-Release version of Package meeting constraints not chosen: \nExpected:\n%#v\nGot:\n%#v\n", pkg1, out)
+	require.NoError(t, err)
+}
+
 func Test_PackageWithConstraints_HighestMatch(t *testing.T) {
 	log := logf.Log.WithName("kc")
 	fakek8s := fake.NewSimpleClientset()
 	pkgName := "pkg.test.carvel.dev"
-	pkg1 := generatePackageWithConstraints(pkgName, "0.4.0", ">0.1.0", ">0.1.0") // this one is the lowest version but installable
-	pkg2 := generatePackageWithConstraints(pkgName, "0.5.0", ">0.1.0", ">0.1.0") // this one is the highest installable version
-	pkg3 := generatePackageWithConstraints(pkgName, "1.4.1", ">2.0.0", "")       // higher version uninstallable
+	pkg1 := generatePackageWithConstraints(pkgName, "0.4.0", ">0.1.0", []string{}, ">0.1.0", []string{}) // this one is the lowest version but installable
+	pkg2 := generatePackageWithConstraints(pkgName, "0.5.0", ">0.1.0", []string{}, ">0.1.0", []string{}) // this one is the highest installable version
+	pkg3 := generatePackageWithConstraints(pkgName, "1.4.1", ">2.0.0", []string{}, "", []string{})       // higher version uninstallable
 	fakePkgClient := fakeapiserver.NewSimpleClientset(&pkg1, &pkg2, &pkg3)
 
 	// mock the kubernetes server version
@@ -571,7 +611,7 @@ func Test_PlaceHolderSecretCreated_WhenPackageInstallUpdated(t *testing.T) {
 	assert.Equal(t, "instl-pkg-fetch-0", app.Spec.Fetch[0].ImgpkgBundle.SecretRef.Name)
 }
 
-func generatePackageWithConstraints(name, version, kcConstraint, k8sContraint string) datapkgingv1alpha1.Package {
+func generatePackageWithConstraints(name, version, kcConstraint string, kcPreReleaseConstraintIdentifiers []string, k8sConstraint string, k8sPreReleaseConstraintIdentifiers []string) datapkgingv1alpha1.Package {
 	return datapkgingv1alpha1.Package{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name + "." + version,
@@ -581,9 +621,15 @@ func generatePackageWithConstraints(name, version, kcConstraint, k8sContraint st
 			Version: version,
 			KappControllerVersionSelection: &versions.VersionSelectionSemver{
 				Constraints: kcConstraint,
+				Prereleases: &versions.VersionSelectionSemverPrereleases{
+					Identifiers: kcPreReleaseConstraintIdentifiers,
+				},
 			},
 			KubernetesVersionSelection: &versions.VersionSelectionSemver{
-				Constraints: k8sContraint,
+				Constraints: k8sConstraint,
+				Prereleases: &versions.VersionSelectionSemverPrereleases{
+					Identifiers: k8sPreReleaseConstraintIdentifiers,
+				},
 			},
 		},
 	}
