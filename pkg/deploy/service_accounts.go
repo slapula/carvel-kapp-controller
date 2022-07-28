@@ -55,6 +55,7 @@ func (s *ServiceAccounts) Find(genericOpts GenericOpts, saName string) (Processe
 	return pgoForSA, nil
 }
 
+// GetClusterVersion returns the kubernetes API version for the cluster which has been supplied to kapp-controller via a kubeconfig
 func GetClusterVersion(cc kubernetes.Interface, saName string, specCluster *v1alpha1.AppCluster, objMeta *metav1.ObjectMeta, log logr.Logger) (*version.Info, error) {
 	// this logic is duplicated here and in ProcessOpts: if the serviceAccount name is present, we will be deploying to this cluster
 	if len(saName) > 0 {
