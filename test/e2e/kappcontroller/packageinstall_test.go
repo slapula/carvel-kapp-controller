@@ -283,7 +283,7 @@ func Test_PackageInstalled_FromPackageInstall_VersionConstraints(t *testing.T) {
 			e2e.RunOpts{
 				StdinReader: strings.NewReader(installPkgYAML),
 				AllowError:  true})
-		assert.Contains(t, out, "but package constrained versions to: <1.0.0")
+		assert.Contains(t, out, "after-kubernetes-version-check=0")
 		require.Error(t, err)
 		// Without calling cleanup after each stage, somehow it seems like the controller doesn't
 		// get the updated annotation.
@@ -311,7 +311,8 @@ func Test_PackageInstalled_FromPackageInstall_VersionConstraints(t *testing.T) {
 			e2e.RunOpts{
 				StdinReader: strings.NewReader(installPkgYAML),
 				AllowError:  true})
-		assert.Contains(t, out, "but package constrained versions to: >=3.0.0")
+		assert.Contains(t, out, "after-kubernetes-version-check=1")
+		assert.Contains(t, out, "after-kapp-controller-version-check=0")
 		require.Error(t, err)
 		cleanUp()
 	})
